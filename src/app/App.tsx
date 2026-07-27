@@ -151,17 +151,19 @@ function Connector({ edge, visible }: { edge: Edge; visible: boolean }) {
 }
 
 // ─── Org node ─────────────────────────────────────────────────────────────────
-function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
+function OrgNode({ node, isVisible, isCollapsed, onToggle, rx, ry }: {
   node: LayoutNode; isVisible: boolean; isCollapsed: boolean;
-  onToggle: (id: string) => void;
+  onToggle: (id: string) => void; rx?: number; ry?: number;
 }) {
+  const x = rx ?? node.x;
+  const y = ry ?? node.y;
   const hasChildren = node.children.length > 0;
   return (
     <motion.div
       className="absolute flex flex-col items-center select-none"
       style={{
-        left: node.x - NODE_W / 2,
-        top: node.y - AVATAR_R,
+        left: x - NODE_W / 2,
+        top: y - AVATAR_R,
         width: NODE_W,
         pointerEvents: isVisible ? "auto" : "none",
       }}
@@ -351,15 +353,19 @@ export default function App() {
           </svg>
 
           {/* Node layer */}
-          {ALL_NODES.map(node => (
-            <OrgNode
-              key={node.id}
-              node={node}
-              isVisible={visibleIds.has(node.id)}
-              isCollapsed={collapsed.has(node.id)}
-              onToggle={toggleNode}
-            />
-          ))}
+          {ALL_NODES.map(node => {
+            const pos = reactivePositions.get(node.id);
+            return (
+              <OrgNode
+                key={node.id}
+                node={node}
+                isVisible={visibleIds.has(node.id)}
+                isCollapsed={collapsed.has(node.id)}
+                onToggle={toggleNode}
+                rx={pos?.x} ry={pos?.y}
+              />
+            );
+          })}
         </div>
       </div>
 
