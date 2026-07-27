@@ -101,8 +101,6 @@ const ROOT_NODE = buildLayout(ORG, ROOT_X, ROOT_Y);
 const ALL_NODES = flatNodes(ROOT_NODE);
 const ALL_EDGES = flatEdges(ROOT_NODE);
 const CANVAS_H  = Math.max(...ALL_NODES.map(n => n.y)) + AVATAR_R + 120 + PADDING;
-const EXPANDABLE = new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id));
-
 // ─── Visibility helper ────────────────────────────────────────────────────────
 function getVisibleIds(collapsed: Set<string>): Set<string> {
   const vis = new Set<string>();
@@ -242,6 +240,31 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const r = { on: false, sx: 0, sy: 0, px: 0, py: 0 };
+
+  const ptrDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    r.on = false; r.sx = e.clientX; r.sy = e.clientY;
+    r.px = pan.x; r.py = pan.y;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+  const ptrMove = (e: React.PointerEvent) => {
+    if (!r.on) {
+      if ((e.clientX - r.sx)**2 + (e.clientY - r.sy)**2 > 9) r.on = true;
+      return;
+    }
+    const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
+    setPan({
+      x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.px + dx)),
+      y: Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, r.py + dy)),
+    });
+  };
+  const ptrUp = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    r.on = false;
+  };
+
   const toggleNode = (id: string) =>
     setCollapsed(prev => {
       const next = new Set(prev);
@@ -257,10 +280,11 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
         <div
           className="relative"
           style={{
+            transform: "translate(" + pan.x + "px," + pan.y + "px)",
             width: CANVAS_W, height: CANVAS_H,
             minWidth: "100%", minHeight: "100%",
           }}
