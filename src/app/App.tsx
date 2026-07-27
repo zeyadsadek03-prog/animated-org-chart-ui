@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "motion/react";
-import { ChevronUp, ChevronDown, Building2 } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 // ─── Design spec (single source of truth) ────────────────────────────────────
 const NODE_W   = 120;  // horizontal space allocated per leaf node (px)
@@ -238,78 +238,9 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
   );
 }
 
-// ─── Spec panel ───────────────────────────────────────────────────────────────
-const SPEC_ROWS: [string, string][] = [
-  ["Node spacing",    `H ${H_GAP}px  ·  V ${V_GAP}px`],
-  ["Avatar diameter", `${AVATAR_D}px`],
-  ["Stroke weight",   `${STROKE_W}px`],
-  ["Curve tension",   `${CURVE_T}px`],
-  ["Anim duration",   `${ANIM_DUR}s`],
-  ["Easing",          "cubic-bezier(.4,0,.2,1)"],
-  ["Line reveal",     "motion pathLength 0 → 1"],
-  ["Node reveal",     "opacity 0 → 1  (no position shift)"],
-  ["Sequencing",      "line + node animate simultaneously"],
-  ["Kink fix",        "vertical CP tangents at both anchors"],
-  ["CP formula",      "C px,py+r+T  cx,cy-r-T"],
-];
-
-function SpecPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0,  scale: 1 }}
-      className="fixed bottom-6 right-6 rounded-2xl p-5 z-30"
-      style={{
-        background: "rgba(255,255,255,0.96)",
-        backdropFilter: "blur(18px)",
-        border: "1px solid rgba(147,180,213,0.45)",
-        boxShadow: "0 16px 48px rgba(37,99,235,0.12), 0 2px 8px rgba(0,0,0,0.06)",
-        width: 288,
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-      }}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "#2563EB" }}>
-          DESIGN SPEC
-        </span>
-        <button
-          onClick={onClose}
-          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
-          style={{ fontSize: 16, color: "#94A3B8", lineHeight: 1 }}
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="space-y-1.5">
-        {SPEC_ROWS.map(([label, value]) => (
-          <div key={label} className="flex justify-between items-baseline gap-2">
-            <span style={{ fontSize: 9.5, color: "#94A3B8", flexShrink: 0 }}>{label}</span>
-            <span style={{ fontSize: 8.5, fontWeight: 600, color: "#3B5EA0", fontFamily: "monospace", textAlign: "right" }}>
-              {value}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Kink explanation */}
-      <div
-        className="mt-4 rounded-xl p-3"
-        style={{ background: "#EFF6FF", fontSize: 8.5, color: "#475569", lineHeight: 1.75 }}
-      >
-        <strong style={{ color: "#2563EB", display: "block", marginBottom: 4 }}>Why no kinks:</strong>
-        Each edge is one cubic bezier whose control points share the x-coordinate of their anchor.
-        This forces tangents to be perfectly vertical at both endpoints — so the curve can never produce
-        an angle discontinuity, even as pathLength animates.
-      </div>
-    </motion.div>
-  );
-}
-
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [showSpec, setShowSpec]   = useState(true);
 
   const toggleNode = (id: string) =>
     setCollapsed(prev => {
@@ -322,92 +253,11 @@ export default function App() {
 
   return (
     <div
-      className="size-full flex flex-col bg-background overflow-hidden"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      className="size-full"
+      style={{ background: "#F6F4EF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header
-        className="flex items-center justify-between px-7 py-4 flex-shrink-0"
-        style={{
-          background: "rgba(255,255,255,0.88)",
-          backdropFilter: "blur(10px)",
-          borderBottom: "1px solid rgba(147,180,213,0.28)",
-          zIndex: 10,
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#EFF6FF", border: "1.5px solid #BFDBFE" }}
-          >
-            <Building2 size={18} color="#2563EB" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", letterSpacing: "-0.01em" }}>
-              Bellcrest Builds
-            </h1>
-            <p style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 1, letterSpacing: "0.02em" }}>
-              Organization Chart  ·  12 members
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCollapsed(new Set())}
-            className="rounded-full transition-colors hover:bg-white"
-            style={{
-              fontSize: 10.5, fontWeight: 600, padding: "6px 14px",
-              color: "#64748B", border: "1px solid rgba(147,180,213,0.5)",
-            }}
-          >
-            Expand all
-          </button>
-          <button
-            onClick={() => setCollapsed(new Set(EXPANDABLE))}
-            className="rounded-full transition-colors hover:bg-white"
-            style={{
-              fontSize: 10.5, fontWeight: 600, padding: "6px 14px",
-              color: "#64748B", border: "1px solid rgba(147,180,213,0.5)",
-            }}
-          >
-            Collapse all
-          </button>
-          <button
-            onClick={() => setShowSpec(s => !s)}
-            className="rounded-full transition-all duration-200"
-            style={{
-              fontSize: 10.5, fontWeight: 700, letterSpacing: "0.07em",
-              padding: "6px 14px",
-              background: showSpec ? "#2563EB" : "#F1F5F9",
-              color:      showSpec ? "#FFFFFF"  : "#64748B",
-            }}
-          >
-            SPEC
-          </button>
-        </div>
-      </header>
-
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto relative" style={{ background: "#F6F4EF" }}>
-        {/* Subtle dot grid */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: "radial-gradient(circle, #B4C8DE 1px, transparent 1px)",
-            backgroundSize: "26px 26px",
-            opacity: 0.42,
-          }}
-        />
-
-        {/* Vignette */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse 80% 60% at 50% 10%, transparent 60%, rgba(246,244,239,0.6) 100%)",
-          }}
-        />
-
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#F6F4EF" }}>
         <div
           className="relative"
           style={{
@@ -444,8 +294,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Spec panel */}
-      {showSpec && <SpecPanel onClose={() => setShowSpec(false)} />}
     </div>
   );
 }
