@@ -16,11 +16,10 @@ const PADDING  = 80;   // canvas edge padding (px)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Person {
-  id: string; name: string; initials: string; role: string;
-  bg: string; children: Person[];
+  id: string; name: string; bg: string; children: Person[];
 }
-interface LayoutNode extends Omit<Person, "children"> {
-  x: number; y: number; children: LayoutNode[];
+interface LayoutNode {
+  id: string; name: string; bg: string; x: number; y: number; children: LayoutNode[];
 }
 interface Edge {
   key: string; parentId: string; childId: string;
@@ -29,40 +28,31 @@ interface Edge {
 
 // ─── Org data (12 people) ─────────────────────────────────────────────────────
 const ORG: Person = {
-  id: "ceo", name: "MARCUS BELL", initials: "MB",
-  role: "Chief Executive", bg: "#EFF6FF",
+  id: "idris", name: "Idris", bg: "#EEF2FF",
   children: [
     {
-      id: "ops", name: "DIANA REYES", initials: "DR",
-      role: "Operations Director", bg: "#FFFBEB",
+      id: "muhammad", name: "Muhammad", bg: "#FFF7ED",
       children: [
-        {
-          id: "siteA", name: "KYLE MORGAN", initials: "KM",
-          role: "Site Supervisor", bg: "#F0FDF4",
-          children: [
-            { id: "carp", name: "TOM HARRIS",  initials: "TH", role: "Lead Carpenter", bg: "#F8FAFC", children: [] },
-            { id: "elec", name: "SARA LUNA",   initials: "SL", role: "Electrician",    bg: "#F8FAFC", children: [] },
-          ],
-        },
-        {
-          id: "siteB", name: "PETRA VOSS", initials: "PV",
-          role: "Site Supervisor", bg: "#FDF4FF",
-          children: [
-            { id: "plumb", name: "JAMES KIRK",  initials: "JK", role: "Plumber",  bg: "#F8FAFC", children: [] },
-            { id: "paint", name: "MILA CROSS",  initials: "MC", role: "Painter",  bg: "#F8FAFC", children: [] },
-          ],
-        },
+        { id: "zeyad", name: "Zeyad", bg: "#F8FAFC", children: [] },
+        { id: "moaz", name: "Moaz", bg: "#F8FAFC", children: [] },
+        { id: "shahd", name: "Shahd", bg: "#F8FAFC", children: [] },
       ],
     },
     {
-      id: "pm", name: "ALEX CHEN", initials: "AC",
-      role: "Project Manager", bg: "#F5F3FF",
+      id: "osama", name: "Osama", bg: "#F0FDF4",
       children: [
-        { id: "est",  name: "RUTH OKAFOR", initials: "RO", role: "Estimator",      bg: "#F8FAFC", children: [] },
-        { id: "safe", name: "DAN WRIGHT",  initials: "DW", role: "Safety Officer", bg: "#F8FAFC", children: [] },
+        { id: "kareem", name: "Kareem", bg: "#F8FAFC", children: [] },
+        { id: "momin", name: "Momin", bg: "#F8FAFC", children: [] },
       ],
     },
-    { id: "admin", name: "FIONA BLAKE", initials: "FB", role: "Admin Manager", bg: "#FFF7ED", children: [] },
+    {
+      id: "nesrin", name: "Nesrin", bg: "#FFF1F2",
+      children: [
+        { id: "adham", name: "Adham", bg: "#F8FAFC", children: [] },
+        { id: "faisal", name: "Faisal", bg: "#F8FAFC", children: [] },
+        { id: "bassam", name: "Bassam", bg: "#F8FAFC", children: [] },
+      ],
+    },
   ],
 };
 
@@ -81,7 +71,7 @@ function buildLayout(node: Person, cx: number, cy: number): LayoutNode {
     ox += widths[i] + H_GAP;
     return lc;
   });
-  return { id: node.id, name: node.name, initials: node.initials, role: node.role, bg: node.bg, x: cx, y: cy, children };
+  return { id: node.id, name: node.name, bg: node.bg, x: cx, y: cy, children };
 }
 
 function flatNodes(n: LayoutNode): LayoutNode[] { return [n, ...n.children.flatMap(flatNodes)]; }
@@ -97,7 +87,7 @@ const TREE_W    = subtreeW(ORG);
 const CANVAS_W  = Math.max(TREE_W + PADDING * 2, 900);
 const ROOT_X    = CANVAS_W / 2;
 const ROOT_Y    = PADDING + AVATAR_R;
-const ROOT_NODE = buildLayout(ORG, ROOT_X, ROOT_Y);
+const ROOT_NODE = buildLayout(ORG as any, ROOT_X, ROOT_Y);
 const ALL_NODES = flatNodes(ROOT_NODE);
 const ALL_EDGES = flatEdges(ROOT_NODE);
 const CANVAS_H  = Math.max(...ALL_NODES.map(n => n.y)) + AVATAR_R + 120 + PADDING;
@@ -178,13 +168,8 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
           : node.name}
         tabIndex={hasChildren ? 0 : -1}
       >
-        {/* Hover ring */}
-        <span
-          className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-          style={{ boxShadow: "0 0 0 4px rgba(37,99,235,0.12)" }}
-        />
-        <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.07em", color: "#3068B8" }}>
-          {node.initials}
+        <span style={{ fontSize: 16, fontWeight: 800, color: "#1E3A8A" }}>
+          {node.name.charAt(0).toUpperCase()}
         </span>
 
         {/* Expand/collapse badge */}
@@ -226,13 +211,6 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
         </span>
       </div>
 
-      {/* Role label */}
-      <p className="mt-1.5 text-center leading-tight" style={{
-        fontSize: 9.5, color: "#7A90A8", letterSpacing: "0.02em",
-      }}>
-        {node.role}
-      </p>
-    </motion.div>
   );
 }
 
