@@ -363,6 +363,10 @@ export default function App() {
         </div>
       </div>
 
+      {/* Step 1 readout overlay */}
+      <div className="fixed top-0 left-0 z-50 pointer-events-none bg-black/70 text-white text-[11px] p-2 font-mono max-w-[220px] max-h-[180px] overflow-hidden select-none" id="reflow-readout">
+        {(() => { const fmt = (n: any) => ({ id: n.id, x: Math.round(n.x), children: n.children.map((c: any) => fmt(c)) }); return JSON.stringify(fmt(reflowLayout)); })()}
+      </div>
     </div>
   );
 }
