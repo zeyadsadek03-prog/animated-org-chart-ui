@@ -238,7 +238,7 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const v = useRef({ vx: 0, vy: 0, raf: 0, lastX: 0, lastY: 0, lastT: 0 });
@@ -306,7 +306,7 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-center justify-center cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
         <div
           style={{
             position: "absolute", inset: 0,
