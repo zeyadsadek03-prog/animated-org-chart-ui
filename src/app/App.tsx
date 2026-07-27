@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
@@ -241,17 +241,21 @@ export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const v = useRef({ vx: 0, vy: 0, raf: 0, lastX: 0, lastY: 0, lastT: 0 });
   const r = { on: false, sx: 0, sy: 0, px: 0, py: 0 };
 
   const ptrDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
+    cancelAnimationFrame(v.current.raf);
     r.on = false; r.sx = e.clientX; r.sy = e.clientY;
     r.px = pan.x; r.py = pan.y;
+    v.current.vx = 0; v.current.vy = 0;
+    v.current.lastX = e.clientX; v.current.lastY = e.clientY; v.current.lastT = performance.now();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const ptrMove = (e: React.PointerEvent) => {
     if (!r.on) {
-      if ((e.clientX - r.sx)**2 + (e.clientY - r.sy)**2 > 9) r.on = true;
+      if ((e.clientX - r.sx)**2 + (e.clientY - r.sy)**2 > 2) r.on = true;
       return;
     }
     const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
@@ -259,10 +263,34 @@ export default function App() {
       x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.px + dx)),
       y: Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, r.py + dy)),
     });
+    const now = performance.now();
+    const dt = now - v.current.lastT;
+    if (dt > 0) {
+      v.current.vx = 0.6 * v.current.vx + 0.4 * (e.clientX - v.current.lastX) / dt * 16;
+      v.current.vy = 0.6 * v.current.vy + 0.4 * (e.clientY - v.current.lastY) / dt * 16;
+    }
+    v.current.lastX = e.clientX; v.current.lastY = e.clientY; v.current.lastT = now;
   };
   const ptrUp = (e: React.PointerEvent) => {
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
     r.on = false;
+    const vx = Math.max(-40, Math.min(40, v.current.vx));
+    const vy = Math.max(-40, Math.min(40, v.current.vy));
+    if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) return;
+    const step = () => {
+      setPan(prev => {
+        const nx = Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, prev.x + vx));
+        const ny = Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, prev.y + vy));
+        const outOfBounds = nx !== prev.x || ny !== prev.y;
+        v.current.vx *= 0.92; v.current.vy *= 0.92;
+        if (outOfBounds || (Math.abs(v.current.vx) < 0.02 && Math.abs(v.current.vy) < 0.02)) {
+          return prev;
+        }
+        v.current.raf = requestAnimationFrame(step);
+        return { x: nx, y: ny };
+      });
+    };
+    v.current.raf = requestAnimationFrame(step);
   };
 
   const toggleNode = (id: string) =>
