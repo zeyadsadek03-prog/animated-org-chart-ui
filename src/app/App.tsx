@@ -212,7 +212,7 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => INITIAL_COLLAPSED);
 
   const [pan, setPan] = useState(() => {
     if (typeof window !== "undefined") {
