@@ -247,17 +247,15 @@ export default function App() {
   const ptrDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     cancelAnimationFrame(v.current.raf);
-    r.on = false; r.sx = e.clientX; r.sy = e.clientY;
+    r.on = true;
+    r.sx = e.clientX; r.sy = e.clientY;
     r.px = pan.x; r.py = pan.y;
     v.current.vx = 0; v.current.vy = 0;
     v.current.lastX = e.clientX; v.current.lastY = e.clientY; v.current.lastT = performance.now();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const ptrMove = (e: React.PointerEvent) => {
-    if (!r.on) {
-      if ((e.clientX - r.sx)**2 + (e.clientY - r.sy)**2 > 2) r.on = true;
-      return;
-    }
+    if (!r.on) return;
     const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
     setPan({
       x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.px + dx)),
@@ -308,7 +306,7 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
         <div
           className="relative"
           style={{
