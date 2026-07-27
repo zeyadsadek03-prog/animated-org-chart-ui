@@ -293,7 +293,7 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-center justify-center cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-center justify-center cursor-grab select-none touch-action-none" style={{ background: "#EEEEEE", touchAction: "none" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
         <div
           style={{
             position: "absolute", inset: 0,
