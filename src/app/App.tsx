@@ -254,10 +254,10 @@ export default function App() {
   return (
     <div
       className="size-full"
-      style={{ background: "#F6F4EF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#F6F4EF" }}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#EEEEEE" }}>
         <div
           className="relative"
           style={{
