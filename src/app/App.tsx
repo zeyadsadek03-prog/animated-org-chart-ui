@@ -210,6 +210,7 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
           {node.name}
         </span>
       </div>
+    </motion.div>
 
   );
 }
