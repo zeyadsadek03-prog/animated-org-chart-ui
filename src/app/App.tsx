@@ -84,13 +84,13 @@ function flatEdges(n: LayoutNode): Edge[] {
   ];
 }
 // ─── Visibility helper ────────────────────────────────────────────────────────
-function getVisibleIds(collapsed: Set<string>): Set<string> {
+function getVisibleIds(root: LayoutNode, collapsed: Set<string>): Set<string> {
   const vis = new Set<string>();
   function walk(n: LayoutNode) {
     vis.add(n.id);
     if (!collapsed.has(n.id)) n.children.forEach(walk);
   }
-  walk(ROOT_NODE);
+  walk(root);
   return vis;
 }
 
