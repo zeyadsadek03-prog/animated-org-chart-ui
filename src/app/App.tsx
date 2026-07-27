@@ -112,6 +112,17 @@ function curvePath(px: number, py: number, cx: number, cy: number) {
   return `M ${px} ${y0} C ${px} ${y0 + CURVE_T} ${cx} ${y1 - CURVE_T} ${cx} ${y1}`;
 }
 
+// ─── Visibility helper ────────────────────────────────────────────────────────
+function getVisibleIds(collapsed: Set<string>): Set<string> {
+  const vis = new Set<string>();
+  function walk(n: LayoutNode) {
+    vis.add(n.id);
+    if (!collapsed.has(n.id)) n.children.forEach(walk);
+  }
+  walk(ROOT_NODE as any);
+  return vis;
+}
+
 // ─── Connector ────────────────────────────────────────────────────────────────
 function Connector({ edge, visible }: { edge: Edge; visible: boolean }) {
   return (
@@ -283,10 +294,12 @@ export default function App() {
       return next;
     });
 
-  const layoutData = useMemo(() => buildLayout(ORG, Math.max(subtreeW(ORG, collapsed) + PADDING * 2, 900) / 2, PADDING + AVATAR_R, collapsed), [collapsed]);
+  const visibleIds = useMemo(() => getVisibleIds(collapsed), [collapsed]);
+
+  const layoutData = useMemo(() => buildLayout(ORG, CANVAS_W / 2, ROOT_Y, collapsed), [collapsed]);
   const ALL_NODES_REL = useMemo(() => flatNodes(layoutData), [layoutData]);
   const ALL_EDGES_REL = useMemo(() => flatEdges(layoutData), [layoutData]);
-  const CANVAS_W_REL = Math.max(subtreeW(ORG, collapsed) + PADDING * 2, 900);
+  const CANVAS_W_REL = CANVAS_W;
   const CANVAS_H_REL = Math.max(...ALL_NODES_REL.map(n => n.y)) + AVATAR_R + 120 + PADDING;
 
   return (
@@ -319,25 +332,27 @@ export default function App() {
             height={CANVAS_H_REL}
             style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            {ALL_EDGES_REL.map(edge => (
-              <Connector
-                key={edge.key}
-                edge={edge}
-                visible={true}
-              />
-            ))}
+            {ALL_EDGES_REL.map(edge => {
+              const isVisibleParent = visibleIds.has(edge.parentId);
+              const isParentCollapsed = collapsed.has(edge.parentId);
+              const visible = isVisibleParent && !isParentCollapsed;
+              return <Connector key={edge.key} edge={edge} visible={visible} />;
+            })}
           </svg>
 
           {/* Node layer */}
-          {ALL_NODES_REL.map(node => (
-            <OrgNode
-              key={node.id}
-              node={node}
-              isVisible={true}
-              isCollapsed={collapsed.has(node.id)}
-              onToggle={toggleNode}
-            />
-          ))}
+          {ALL_NODES_REL.map(node => {
+            const isVisible = visibleIds.has(node.id);
+            return (
+              <OrgNode
+                key={node.id}
+                node={node}
+                isVisible={isVisible}
+                isCollapsed={collapsed.has(node.id)}
+                onToggle={toggleNode}
+              />
+            );
+          })}
         </div>
       </div>
 
