@@ -207,6 +207,9 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  if (typeof window !== 'undefined') {
+    window.__APP_ERROR__ = null;
+  }
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
 
   const [pan, setPan] = useState(() => {
@@ -231,6 +234,14 @@ export default function App() {
     v.current.lastX = e.clientX; v.current.lastY = e.clientY; v.current.lastT = performance.now();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
+  if (typeof window !== 'undefined') {
+    const origError = console.error;
+    console.error = (...args: any[]) => {
+      window.__APP_ERROR__ = args.map(String).join(' | ');
+      origError.apply(console, args);
+    };
+    try { throw new Error('app check'); } catch (e) { /* ensure scope */ }
+  }
   const ptrMove = (e: React.PointerEvent) => {
     if (!r.current.on) return;
     const dx = e.clientX - r.current.sx, dy = e.clientY - r.current.sy;
