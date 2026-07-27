@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
@@ -242,24 +242,24 @@ export default function App() {
 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const v = useRef({ vx: 0, vy: 0, raf: 0, lastX: 0, lastY: 0, lastT: 0 });
-  const r = { on: false, sx: 0, sy: 0, px: 0, py: 0 };
+  const r = useRef({ on: false, sx: 0, sy: 0, px: 0, py: 0 });
 
   const ptrDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     cancelAnimationFrame(v.current.raf);
-    r.on = true;
-    r.sx = e.clientX; r.sy = e.clientY;
-    r.px = pan.x; r.py = pan.y;
+    r.current.on = true;
+    r.current.sx = e.clientX; r.current.sy = e.clientY;
+    r.current.px = pan.x; r.current.py = pan.y;
     v.current.vx = 0; v.current.vy = 0;
     v.current.lastX = e.clientX; v.current.lastY = e.clientY; v.current.lastT = performance.now();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const ptrMove = (e: React.PointerEvent) => {
-    if (!r.on) return;
-    const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
+    if (!r.current.on) return;
+    const dx = e.clientX - r.current.sx, dy = e.clientY - r.current.sy;
     setPan({
-      x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.px + dx)),
-      y: Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, r.py + dy)),
+      x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.current.px + dx)),
+      y: Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, r.current.py + dy)),
     });
     const now = performance.now();
     const dt = now - v.current.lastT;
@@ -271,7 +271,7 @@ export default function App() {
   };
   const ptrUp = (e: React.PointerEvent) => {
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
-    r.on = false;
+    r.current.on = false;
     const vx = Math.max(-40, Math.min(40, v.current.vx));
     const vy = Math.max(-40, Math.min(40, v.current.vy));
     if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) return;
