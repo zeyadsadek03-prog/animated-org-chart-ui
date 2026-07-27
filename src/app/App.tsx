@@ -56,7 +56,7 @@ const ORG: Person = {
   ],
 };
 
-// ─── Layout (recursive, computed once from static data) ───────────────────────
+// ─── Layout (static fully-expanded tree used as positional source of truth) ───
 function subtreeW(n: Person): number {
   if (!n.children.length) return NODE_W;
   return n.children.reduce((s, c) => s + subtreeW(c), 0) + (n.children.length - 1) * H_GAP;
@@ -91,6 +91,46 @@ const ROOT_NODE = buildLayout(ORG as any, ROOT_X, ROOT_Y);
 const ALL_NODES = flatNodes(ROOT_NODE);
 const ALL_EDGES = flatEdges(ROOT_NODE);
 const CANVAS_H  = Math.max(...ALL_NODES.map(n => n.y)) + AVATAR_R + 120 + PADDING;
+
+// ─── Reflow: recompute horizontal spacing from current collapsed set ───────────
+const PERSON_BY_ID: Record<string, Person> = (() => {
+  const map: Record<string, Person> = {};
+  function walk(n: Person) {
+    map[n.id] = n;
+    n.children.forEach(walk);
+  }
+  walk(ORG);
+  return map;
+})();
+
+function subtreeWFor(id: string, collapsed: Set<string>): number {
+  return subtreeW(PERSON_BY_ID[id] as any, collapsed);
+}
+
+function reflowPositions(root: LayoutNode, collapsed: Set<string>): LayoutNode {
+  const rec = (node: LayoutNode, cx: number, cy: number): LayoutNode => {
+    const isCollapsed = collapsed.has(node.id);
+    const hasVisible = !isCollapsed && node.children.length > 0;
+    const widths = hasVisible ? node.children.map(c => subtreeWFor(c.id, collapsed)) : [];
+    const total = hasVisible ? widths.reduce((s, w) => s + w, 0) + (node.children.length - 1) * H_GAP : 0;
+    let ox = cx - total / 2;
+    const children = hasVisible ? node.children.map((child, i) => {
+      const lc = rec(child, ox + widths[i] / 2, cy + V_GAP);
+      ox += widths[i] + H_GAP;
+      return lc;
+    }) : [];
+    return { ...node, x: cx, y: cy, children };
+  };
+  return rec(root, root.x, root.y);
+}
+
+function flatNodesRelayout(n: LayoutNode): LayoutNode[] { return [n, ...n.children.flatMap(flatNodesRelayout)]; }
+function flatEdgesRelayout(n: LayoutNode): Edge[] {
+  return [
+    ...n.children.map(c => ({ key: `${n.id}→${c.id}`, parentId: n.id, childId: c.id, px: n.x, py: n.y, cx: c.x, cy: c.y })),
+    ...n.children.flatMap(flatEdgesRelayout),
+  ];
+}
 // ─── Visibility helper ────────────────────────────────────────────────────────
 function getVisibleIds(collapsed: Set<string>): Set<string> {
   const vis = new Set<string>();
@@ -149,7 +189,7 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
         pointerEvents: isVisible ? "auto" : "none",
       }}
       initial={{ opacity: 0 }}
-      animate={{ opacity: isVisible ? 1 : 0 }}
+      animate={{ left: node.x - NODE_W / 2, top: node.y - AVATAR_R, opacity: isVisible ? 1 : 0 }}
       transition={{ duration: ANIM_DUR, ease: EASE }}
     >
       {/* Avatar circle */}
@@ -287,6 +327,10 @@ export default function App() {
 
   const visibleIds = useMemo(() => getVisibleIds(collapsed), [collapsed]);
 
+  const reactiveRoot = useMemo(() => reflowPositions(ROOT_NODE, collapsed), [collapsed]);
+  const reactiveNodes = useMemo(() => flatNodesRelayout(reactiveRoot), [reactiveRoot]);
+  const reactiveEdges = useMemo(() => flatEdgesRelayout(reactiveRoot), [reactiveRoot]);
+
   return (
     <div
       className="size-full"
@@ -317,7 +361,7 @@ export default function App() {
             height={CANVAS_H}
             style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            {ALL_EDGES.map(edge => (
+            {reactiveEdges.map(edge => (
               <Connector
                 key={edge.key}
                 edge={edge}
@@ -327,7 +371,7 @@ export default function App() {
           </svg>
 
           {/* Node layer */}
-          {ALL_NODES.map(node => (
+          {reactiveNodes.map(node => (
             <OrgNode
               key={node.id}
               node={node}
