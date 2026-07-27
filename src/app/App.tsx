@@ -236,12 +236,12 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
-  // Step 1 diagnostic: log recomputed positions without changing rendered output
+  // Step 1 diagnostic: recompute visible layout without changing rendered output
+  const reflowLayout = useMemo(() => buildVisibleLayout(ROOT_NODE, ROOT_X, ROOT_Y, collapsed), [collapsed]);
   useEffect(() => {
-    const layout = buildVisibleLayout(ROOT_NODE, ROOT_X, ROOT_Y, collapsed);
-    const fmt = (n: any, depth = 0): any => ({ id: n.id, x: n.x, children: n.children.map((c: any) => fmt(c, depth + 1)) });
-    console.log("[reflow] visible layout", fmt(layout));
-  }, [collapsed]);
+    const fmt = (n: any) => ({ id: n.id, x: Math.round(n.x), children: n.children.map((c: any) => fmt(c)) });
+    console.log("[reflow] visible layout", fmt(reflowLayout));
+  }, [reflowLayout]);
 
   const [pan, setPan] = useState(() => {
     if (typeof window !== "undefined") {
