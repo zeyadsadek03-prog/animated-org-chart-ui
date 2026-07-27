@@ -306,7 +306,16 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-hidden relative flex items-start justify-center pt-20 cursor-grab select-none" touch-action-none style={{ background: "#EEEEEE" }} onPointerDown={ptrDown} onPointerMove={ptrMove} onPointerUp={ptrUp}>
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+            transform: "translate(" + -pan.x * 0.35 + "px, " + -pan.y * 0.35 + "px)",
+            pointerEvents: "none",
+          }}
+        />
         <div
           className="relative"
           style={{
