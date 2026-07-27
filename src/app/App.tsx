@@ -240,7 +240,15 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
 
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState(() => {
+    if (typeof window !== "undefined") {
+      return {
+        x: window.innerWidth / 2 - ROOT_X,
+        y: window.innerHeight / 2 - ROOT_Y,
+      };
+    }
+    return { x: 0, y: 0 };
+  });
   const v = useRef({ vx: 0, vy: 0, raf: 0, lastX: 0, lastY: 0, lastT: 0 });
   const r = useRef({ on: false, sx: 0, sy: 0, px: 0, py: 0 });
 
