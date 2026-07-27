@@ -1,22 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Lineage — Family Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F0E3;
+    --dot: rgba(64,55,36,0.20);
+    --ink:#26302A;
+    --ink-soft:#767061;
+    --accent:#A8791C;
+    --accent-dark:#7E5A12;
+    --accent-soft: rgba(168,121,28,0.14);
+    --accent-line: rgba(168,121,28,0.85);
+    --card-bg:#FFFDF7;
+    --shadow: 0 10px 24px rgba(38,48,42,0.10), 0 2px 6px rgba(38,48,42,0.07);
+  }
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Animated Org Chart UI Design</title>
-      <meta name="description" content="Visualize and manage organizational structures with an intuitive, animated org chart designed for non-technical users to enhance clarity and workflow." />
-      <meta name="robots" content="noindex, nofollow" />
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      
-    </head>
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    overflow:hidden;
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
 
-    <body>
-      
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-      
-    </body>
-  </html>
-  
+  /* ---------- background dot grid (parallax) ---------- */
+  #bg-grid{
+    position:fixed;
+    inset:-60% -60%;
+    background-image: radial-gradient(var(--dot) 1.4px, transparent 1.4px);
+    background-size: 26px 26px;
+    will-change: transform;
+    pointer-events:none;
+  }
+  #bg-vignette{
+    position:fixed; inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(245,240,227,0) 40%, rgba(245,240,227,0.9) 100%);
+  }
+
+  /* ---------- viewport / canvas ---------- */
+  #viewport{
+    position:fixed; inset:0;
+    overflow:hidden;
+    cursor:grab;
+    touch-action:none;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  #viewport.grabbing{ cursor:grabbing; }
+
+  #canvas{
+    position:absolute;
+    left:0; top:0;
+    width:0; height:0;
+    will-change: transform;
+  }
+
+  #edges{
+    position:absolute; left:0; top:0;
+    overflow:visible;
+    pointer-events:none;
+  }
+  #edges path{
+    fill:none;
+    stroke:var(--accent-line);
+    stroke-width:2;
+    stroke-linecap:round;
+  }
+
+  #nodes-layer{
+    position:absolute; left:0; top:0;
+  }
+
+  /* ---------- node card ---------- */
+  .node{
+    position:absolute;
+    left:0; top:0;
+    width:120px;
+    display:none;
+    opacity:0;
+    transition: opacity .32s ease;
+    will-change: transform;
+  }
+  .node.is-visible{ opacity:1; }
+
+  .node .hit{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    cursor:pointer;
+  }
+
+  .avatar{
+    position:relative;
+    width:68px; height:68px;
+    border-radius:50%;
+    background: var(--card-bg);
+    border: 1.6px dashed rgba(168,121,28,0.45);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:24px;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .node[data-depth="0"] .avatar{
+    background: linear-gradient(180deg, var(--accent-soft), var(--card-bg) 70%);
+    border-color: rgba(168,121,28,0.65);
+  }
+  .node .hit:hover .avatar{
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px rgba(38,48,42,0.14), 0 3px 8px rgba(38,48,42,0.08);
+  }
+  .node .hit:active .avatar{ transform: translateY(0px) scale(.97); }
+
+  .badge{
+    position:absolute;
+    right:-2px; bottom:-2px;
+    width:22px; height:22px;
+    border-radius:50%;
+    background:#fff;
+    border:1.5px solid var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 2px 6px rgba(38,48,42,0.15);
+  }
+  .badge svg{
+    width:11px; height:11px;
+    transition: transform .3s ease;
+  }
+  .node.expanded .badge svg{ transform: rotate(180deg); }
+  .badge path{ stroke:var(--accent); stroke-width:2.4; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+
+  .pill{
+    margin-top:9px;
+    padding:6px 14px;
+    border-radius:999px;
+    background: var(--accent);
+    color:#FFF7E9;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.2px;
+    white-space:nowrap;
+    box-shadow: 0 4px 10px rgba(126,90,18,0.28);
+  }
+
+  /* ---------- chrome ---------- */
+  #topbar{
+    position:fixed; top:0; left:0; right:0;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding:22px 26px;
+    pointer-events:none;
+    z-index:5;
+  }
+  .eyebrow{
+    font-size:11px; letter-spacing:2.2px; text-transform:uppercase;
+    color:var(--accent-dark); font-weight:600; margin:0 0 4px 0;
+  }
+  #topbar h1{
+    margin:0; font-family:'Fraunces', serif; font-weight:600;
+    font-size:22px; color:var(--ink);
+  }
+  #topbar p{
+    margin:4px 0 0 0; font-size:13px; color:var(--ink-soft); max-width:280px;
+  }
+
+  #recenter{
+    pointer-events:auto;
+    display:flex; align-items:center; gap:7px;
+    background: var(--card-bg);
+    border:1.5px solid var(--accent);
+    color:var(--accent-dark);
+    font-family:'Inter',sans-serif;
+    font-weight:600; font-size:12.5px;
+    padding:9px 15px;
+    border-radius:999px;
+    cursor:pointer;
+    box-shadow: var(--shadow);
+    transition: transform .15s ease, background .15s ease;
+  }
+  #recenter:hover{ background:var(--accent-soft); }
+  #recenter:active{ transform: scale(.96); }
+  #recenter svg{ width:13px; height:13px; }
+  #recenter svg path{ stroke:var(--accent-dark); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+
+  @media (max-width:600px){
+    #topbar{ padding:16px 16px; }
+    #topbar h1{ font-size:18px; }
+    #topbar p{ display:none; }
+    #recenter span{ display:none; }
+    #recenter{ padding:10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .node{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="bg-grid"></div>
+  <div id="bg-vignette"></div>
+
+  <div id="topbar">
+    <div>
+      <p class="eyebrow">Lineage</p>
+      <h1>The Idris Family</h1>
+      <p>Tap any circle to open or close their branch. Drag to pan around.</p>
+    </div>
+    <button id="recenter" title="Recenter on root">
+      <svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+      <span>Recenter</span>
+    </button>
+  </div>
+
+  <div id="viewport">
+    <div id="canvas">
+      <svg id="edges" width="1" height="1"><g id="edges-g"></g></svg>
+      <div id="nodes-layer"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- data ---------------- */
+  const treeData = {
+    id:'idris', name:'Idris', children:[
+      { id:'muhammad', name:'Muhammad', children:[
+        { id:'zeyad', name:'Zeyad' },
+        { id:'moaz', name:'Moaz' },
+        { id:'shahd', name:'Shahd' },
+      ]},
+      { id:'osama', name:'Osama', children:[
+        { id:'kareem', name:'Kareem' },
+        { id:'momin', name:'Momin' },
+      ]},
+      { id:'nesrin', name:'Nesrin', children:[
+        { id:'adham', name:'Adham' },
+        { id:'faisal', name:'Faisal' },
+        { id:'bassam', name:'Bassam' },
+      ]},
+    ]
+  };
+
+  /* ---------------- layout constants ---------------- */
+  const AVATAR_R = 34;
+  const CARD_HALF_W = 60;
+  const LEVEL_H = 190;
+  const LEAF_W = 128;
+  const TOP_MARGIN = 90;
+  const PARENT_BOTTOM_OFFSET = 70;
+  const CHILD_TOP_OFFSET = AVATAR_R;
+
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const EXPAND_MS = REDUCED ? 1 : 520;
+  const COLLAPSE_MS = REDUCED ? 1 : 380;
+  const FADE_MS = REDUCED ? 1 : 320; // must match the .node opacity transition duration in CSS
+
+  /* ---------------- build node model ---------------- */
+  const nodeMap = new Map();
+  let idCounter = 0;
+
+  function buildTree(raw, parent, depth){
+    const node = {
+      _uid: 'n' + (idCounter++),
+      id: raw.id,
+      name: raw.name,
+      parent,
+      depth,
+      children: [],
+      expanded: false,
+      visible: false,
+      el: null,
+      curX: 0, curY: 0,
+      targetX: 0, targetY: 0,
+      _w: LEAF_W,
+      tween: null
+    };
+    if (raw.children && raw.children.length){
+      node.children = raw.children.map(c => buildTree(c, node, depth + 1));
+    }
+    nodeMap.set(node.id, node);
+    return node;
+  }
+  const root = buildTree(treeData, null, 0);
+  const allNodes = Array.from(nodeMap.values());
+
+  /* ---------------- DOM refs ---------------- */
+  const viewport = document.getElementById('viewport');
+  const canvas = document.getElementById('canvas');
+  const nodesLayer = document.getElementById('nodes-layer');
+  const edgesG = document.getElementById('edges-g');
+  const bgGrid = document.getElementById('bg-grid');
+  const recenterBtn = document.getElementById('recenter');
+
+  /* ---------------- create node elements ---------------- */
+  function initial(name){ return name.charAt(0).toUpperCase(); }
+
+  function createNodeEl(node){
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.dataset.id = node.id;
+    el.dataset.depth = node.depth;
+
+    const hit = document.createElement('div');
+    hit.className = 'hit';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = initial(node.name);
+
+    if (node.children.length){
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+      avatar.appendChild(badge);
+    }
+
+    const pill = document.createElement('div');
+    pill.className = 'pill';
+    pill.textContent = node.name;
+
+    hit.appendChild(avatar);
+    hit.appendChild(pill);
+    el.appendChild(hit);
+    nodesLayer.appendChild(el);
+    node.el = el;
+  }
+  allNodes.forEach(createNodeEl);
+
+  /* ---------------- edges ---------------- */
+  const activeEdges = new Map(); // childId -> {parent, child, pathEl}
+
+  function getOrCreatePath(childId){
+    let p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    edgesG.appendChild(p);
+    return p;
+  }
+  // Draws the connector from parent to child (stroke animates in), used when
+  // a child is first revealed. Both endpoints are already at their final,
+  // stationary position — only the line's reveal is animated.
+  function addEdgeDrawn(node, duration, onDrawComplete){
+    const pathEl = getOrCreatePath(node.id);
+    activeEdges.set(node.id, { parent: node.parent, child: node, pathEl });
+
+    const p = node.parent;
+    const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
+    const x2 = node.curX, y2 = node.curY - CHILD_TOP_OFFSET;
+    pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
+
+    const len = pathEl.getTotalLength() || 1;
+    pathEl.style.transition = 'none';
+    pathEl.style.strokeDasharray = String(len);
+    pathEl.style.strokeDashoffset = String(len);
+    // force reflow so the "none" transition + starting offset are committed
+    // before we switch to the animated end state
+    pathEl.getBoundingClientRect();
+    pathEl.style.transition = `stroke-dashoffset ${duration}ms ease`;
+    requestAnimationFrame(() => { pathEl.style.strokeDashoffset = '0'; });
+
+    window.setTimeout(() => {
+      pathEl.style.strokeDasharray = '';
+      pathEl.style.strokeDashoffset = '';
+      pathEl.style.transition = '';
+      if (onDrawComplete) onDrawComplete();
+    }, duration);
+  }
+
+  // Reverse of addEdgeDrawn: retracts an already-drawn connector back to
+  // nothing. Used on collapse, after the child node has finished fading out.
+  function retractEdge(node, duration, onRetractComplete){
+    const edge = activeEdges.get(node.id);
+    if (!edge){ if (onRetractComplete) onRetractComplete(); return; }
+    const pathEl = edge.pathEl;
+    const len = pathEl.getTotalLength() || 1;
+    pathEl.style.transition = 'none';
+    pathEl.style.strokeDasharray = String(len);
+    pathEl.style.strokeDashoffset = '0';
+    pathEl.getBoundingClientRect();
+    pathEl.style.transition = `stroke-dashoffset ${duration}ms ease`;
+    requestAnimationFrame(() => { pathEl.style.strokeDashoffset = String(len); });
+
+    window.setTimeout(() => {
+      if (onRetractComplete) onRetractComplete();
+    }, duration);
+  }
+  function removeEdge(nodeId){
+    const e = activeEdges.get(nodeId);
+    if (e){ e.pathEl.remove(); activeEdges.delete(nodeId); }
+  }
+
+  function edgePath(x1,y1,x2,y2){
+    const midY = (y1 + y2) / 2;
+    return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+  }
+
+  function updateConnectors(){
+    activeEdges.forEach(edge => {
+      const p = edge.parent, c = edge.child;
+      const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
+      const x2 = c.curX, y2 = c.curY - CHILD_TOP_OFFSET;
+      edge.pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
+    });
+  }
+
+  /* ---------------- layout ---------------- */
+  function measure(node){
+    if (!node.expanded || node.children.length === 0){
+      node._w = LEAF_W;
+      return node._w;
+    }
+    let w = 0;
+    for (const c of node.children) w += measure(c);
+    node._w = w;
+    return w;
+  }
+  function place(node, left, depth){
+    node.targetY = TOP_MARGIN + depth * LEVEL_H;
+    if (!node.expanded || node.children.length === 0){
+      node.targetX = left + LEAF_W / 2;
+    } else {
+      let cur = left;
+      for (const c of node.children){ place(c, cur, depth + 1); cur += c._w; }
+      const first = node.children[0], last = node.children[node.children.length - 1];
+      node.targetX = (first.targetX + last.targetX) / 2;
+    }
+  }
+  function relayout(){
+    measure(root);
+    place(root, -root._w / 2, 0);
+  }
+
+  /* ---------------- transform application ---------------- */
+  function applyTransform(node){
+    node.el.style.transform = `translate(${node.curX - CARD_HALF_W}px, ${node.curY - AVATAR_R}px)`;
+  }
+
+  /* ---------------- reveal / hide ---------------- */
+  function showNode(node){
+    node.visible = true;
+    node.el.style.display = 'block';
+    // Children no longer spread out from the parent — they sit at their
+    // final position from the start, hidden, and only the connector +
+    // opacity are animated.
+    node.curX = node.targetX; node.curY = node.targetY;
+    applyTransform(node);
+
+    addEdgeDrawn(node, EXPAND_MS, () => {
+      node.el.classList.add('is-visible');
+      if (node.expanded && node.children.length){
+        revealChildren(node);
+      }
+    });
+  }
+  function revealChildren(node){
+    for (const child of node.children){
+      if (!child.visible) showNode(child);
+    }
+  }
+
+  function hideDescendantsInstant(node){
+    for (const child of node.children){
+      if (child.visible){
+        child.visible = false;
+        child.el.style.display = 'none';
+        child.el.classList.remove('is-visible');
+        child.tween = null;
+        removeEdge(child.id);
+      }
+      hideDescendantsInstant(child);
+    }
+  }
+  function hideNode(node){
+    if (!node.visible) return;
+    node.visible = false;
+    node.tween = null; // children no longer move on collapse, nothing to tween
+    node.el.classList.remove('is-visible'); // starts the CSS opacity fade-out
+    hideDescendantsInstant(node);
+
+    window.setTimeout(() => {
+      retractEdge(node, COLLAPSE_MS, () => {
+        node.el.style.display = 'none';
+        removeEdge(node.id);
+      });
+    }, FADE_MS);
+  }
+  function hideChildren(node){
+    for (const child of node.children){
+      hideNode(child);
+    }
+  }
+
+  function reflowVisible(){
+    for (const node of allNodes){
+      if (node.visible && node.tween === null){
+        if (node.curX !== node.targetX || node.curY !== node.targetY){
+          node.tween = {
+            start: performance.now(),
+            duration: EXPAND_MS,
+            fromX: node.curX, fromY: node.curY,
+            toX: node.targetX, toY: node.targetY,
+            onComplete: null
+          };
+        }
+      }
+    }
+  }
+
+  /* ---------------- toggle ---------------- */
+  function toggle(node){
+    if (!node.children.length) return;
+    node.expanded = !node.expanded;
+    node.el.classList.toggle('expanded', node.expanded);
+    relayout();
+    if (node.expanded){
+      revealChildren(node);
+    } else {
+      hideChildren(node);
+    }
+    reflowVisible();
+  }
+
+  /* ---------------- animation loop ---------------- */
+  function ease(t){ return 1 - Math.pow(1 - t, 3); }
+  function lerp(a,b,t){ return a + (b - a) * t; }
+
+  function tick(now){
+    for (const node of allNodes){
+      if (node.tween){
+        const tw = node.tween;
+        const t = Math.min(1, (now - tw.start) / tw.duration);
+        const e = ease(t);
+        node.curX = lerp(tw.fromX, tw.toX, e);
+        node.curY = lerp(tw.fromY, tw.toY, e);
+        applyTransform(node);
+        if (t >= 1){
+          node.tween = null;
+          const cb = tw.onComplete;
+          if (cb) cb();
+        }
+      }
+    }
+    updateConnectors();
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------------- pan / drag ---------------- */
+  let panX = 0, panY = 0;
+  let isPanning = false, moved = false;
+  let startPointer = {x:0,y:0}, startPan = {x:0,y:0};
+  let startTarget = null;
+  const DRAG_THRESHOLD = 6;
+
+  function setPan(x,y){
+    panX = x; panY = y;
+    canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+    bgGrid.style.transform = `translate(${panX * 0.45}px, ${panY * 0.45}px)`;
+  }
+
+  viewport.addEventListener('pointerdown', e => {
+    isPanning = true; moved = false;
+    startPointer = { x: e.clientX, y: e.clientY };
+    startPan = { x: panX, y: panY };
+    // Capture the real element under the pointer now — once we call
+    // setPointerCapture below, e.target on later events (pointerup) gets
+    // retargeted to the capturing element itself, so it can't be used
+    // to find which node (if any) was tapped.
+    startTarget = e.target;
+    viewport.setPointerCapture(e.pointerId);
+    viewport.classList.add('grabbing');
+  });
+  viewport.addEventListener('pointermove', e => {
+    if (!isPanning) return;
+    const dx = e.clientX - startPointer.x, dy = e.clientY - startPointer.y;
+    if (!moved && Math.hypot(dx,dy) > DRAG_THRESHOLD) moved = true;
+    if (moved) setPan(startPan.x + dx, startPan.y + dy);
+  });
+  function endPan(e){
+    if (!isPanning) return;
+    isPanning = false;
+    viewport.classList.remove('grabbing');
+    if (!moved && startTarget){
+      const nodeEl = startTarget.closest && startTarget.closest('.node');
+      if (nodeEl){
+        const node = nodeMap.get(nodeEl.dataset.id);
+        if (node) toggle(node);
+      }
+    }
+    startTarget = null;
+  }
+  viewport.addEventListener('pointerup', endPan);
+  viewport.addEventListener('pointercancel', endPan);
+  viewport.addEventListener('lostpointercapture', () => {
+    isPanning = false;
+    viewport.classList.remove('grabbing');
+  });
+
+  /* ---------------- recenter ---------------- */
+  function centerOnRoot(animated){
+    const vw = viewport.clientWidth, vh = viewport.clientHeight;
+    const targetPanX = vw / 2 - root.curX;
+    const targetPanY = vh * 0.34 - root.curY;
+    if (!animated){ setPan(targetPanX, targetPanY); return; }
+    const fromX = panX, fromY = panY;
+    const start = performance.now();
+    const dur = REDUCED ? 1 : 480;
+    function step(now){
+      const t = Math.min(1, (now - start) / dur);
+      const e = ease(t);
+      setPan(lerp(fromX, targetPanX, e), lerp(fromY, targetPanY, e));
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  recenterBtn.addEventListener('click', () => centerOnRoot(true));
+
+  /* ---------------- init ---------------- */
+  relayout();
+  root.curX = root.targetX; root.curY = root.targetY;
+  root.visible = true;
+  root.el.style.display = 'block';
+  applyTransform(root);
+  requestAnimationFrame(() => root.el.classList.add('is-visible'));
+
+  centerOnRoot(false);
+  requestAnimationFrame(tick);
+
+  window.addEventListener('resize', () => {
+    // keep root anchored roughly if user hasn't panned much; harmless no-op otherwise
+  });
+
+})();
+</script>
+</body>
+</html>
