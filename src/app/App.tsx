@@ -257,7 +257,7 @@ export default function App() {
       style={{ background: "#EEEEEE", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* ── Chart canvas ────────────────────────────────────────────────────── */}
-      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#EEEEEE" }}>
+      <div className="w-full min-w-[100vw] min-h-[100vh] overflow-auto relative flex items-start justify-center pt-20" style={{ background: "#EEEEEE", backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
         <div
           className="relative"
           style={{
