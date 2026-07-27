@@ -113,13 +113,13 @@ function curvePath(px: number, py: number, cx: number, cy: number) {
 }
 
 // ─── Visibility helper ────────────────────────────────────────────────────────
-function getVisibleIds(collapsed: Set<string>): Set<string> {
+function getVisibleIds(node: LayoutNode, collapsed: Set<string>): Set<string> {
   const vis = new Set<string>();
   function walk(n: LayoutNode) {
     vis.add(n.id);
     if (!collapsed.has(n.id)) n.children.forEach(walk);
   }
-  walk(ROOT_NODE as any);
+  walk(node);
   return vis;
 }
 
@@ -294,7 +294,7 @@ export default function App() {
       return next;
     });
 
-  const visibleIds = useMemo(() => getVisibleIds(collapsed), [collapsed]);
+  const visibleIds = useMemo(() => getVisibleIds(layoutData, collapsed), [layoutData, collapsed]);
 
   const layoutData = useMemo(() => buildLayout(ORG, CANVAS_W / 2, ROOT_Y, collapsed), [collapsed]);
   const ALL_NODES_REL = useMemo(() => flatNodes(layoutData), [layoutData]);
