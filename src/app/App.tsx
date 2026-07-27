@@ -57,8 +57,8 @@ const ORG: Person = {
 };
 
 // ─── Layout (reactive: recalculates when collapsed changes) ──────────────────
-function subtreeW(node: Person, collapsed: Set<string>): number {
-  if (collapsed.has(node.id) || !node.children.length) return NODE_W;
+function subtreeW(node: Person, collapsed?: Set<string>): number {
+  if ((collapsed && collapsed.has(node.id)) || !node.children.length) return NODE_W;
   return node.children.reduce((s, c) => s + subtreeW(c, collapsed), 0) + (node.children.length - 1) * H_GAP;
 }
 
