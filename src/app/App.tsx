@@ -56,21 +56,37 @@ const ORG: Person = {
   ],
 };
 
-// ─── Layout (recursive, computed once from static data) ───────────────────────
-function subtreeW(n: Person): number {
-  if (!n.children.length) return NODE_W;
-  return n.children.reduce((s, c) => s + subtreeW(c), 0) + (n.children.length - 1) * H_GAP;
+// ─── Org structure helpers ───────────────────────────────────────────────────
+const EXPANDABLE_IDS = (() => {
+  const ids: string[] = [];
+  function walk(n: Person) {
+    if (n.children.length) {
+      ids.push(n.id);
+      n.children.forEach(walk);
+    }
+  }
+  walk(ORG);
+  return ids;
+})();
+const INITIAL_COLLAPSED = new Set(EXPANDABLE_IDS);
+
+// ─── Reactive layout ──────────────────────────────────────────────────────────
+function subtreeW(node: Person, collapsed: Set<string>): number {
+  if (collapsed.has(node.id) || !node.children.length) return NODE_W;
+  return node.children.reduce((s, c) => s + subtreeW(c, collapsed), 0) + (node.children.length - 1) * H_GAP;
 }
 
-function buildLayout(node: Person, cx: number, cy: number): LayoutNode {
-  const widths = node.children.map(subtreeW);
-  const total  = widths.reduce((s, w) => s + w, 0) + (node.children.length - 1) * H_GAP;
+function buildLayout(node: Person, cx: number, cy: number, collapsed: Set<string>): LayoutNode {
+  const isCollapsed = collapsed.has(node.id);
+  const hasVisibleChildren = !isCollapsed && node.children.length > 0;
+  const widths = hasVisibleChildren ? node.children.map(c => subtreeW(c, collapsed)) : [];
+  const total = hasVisibleChildren ? widths.reduce((s, w) => s + w, 0) + (node.children.length - 1) * H_GAP : 0;
   let ox = cx - total / 2;
-  const children = node.children.map((child, i) => {
-    const lc = buildLayout(child, ox + widths[i] / 2, cy + V_GAP);
+  const children = hasVisibleChildren ? node.children.map((child, i) => {
+    const lc = buildLayout(child, ox + widths[i] / 2, cy + V_GAP, collapsed);
     ox += widths[i] + H_GAP;
     return lc;
-  });
+  }) : [];
   return { id: node.id, name: node.name, bg: node.bg, x: cx, y: cy, children };
 }
 
@@ -81,27 +97,6 @@ function flatEdges(n: LayoutNode): Edge[] {
     ...n.children.flatMap(flatEdges),
   ];
 }
-
-// Compute everything at module level — these values never change
-const TREE_W    = subtreeW(ORG);
-const CANVAS_W  = Math.max(TREE_W + PADDING * 2, 900);
-const ROOT_X    = CANVAS_W / 2;
-const ROOT_Y    = PADDING + AVATAR_R;
-const ROOT_NODE = buildLayout(ORG as any, ROOT_X, ROOT_Y);
-const ALL_NODES = flatNodes(ROOT_NODE);
-const ALL_EDGES = flatEdges(ROOT_NODE);
-const CANVAS_H  = Math.max(...ALL_NODES.map(n => n.y)) + AVATAR_R + 120 + PADDING;
-// ─── Visibility helper ────────────────────────────────────────────────────────
-function getVisibleIds(collapsed: Set<string>): Set<string> {
-  const vis = new Set<string>();
-  function walk(n: LayoutNode) {
-    vis.add(n.id);
-    if (!collapsed.has(n.id)) n.children.forEach(walk);
-  }
-  walk(ROOT_NODE);
-  return vis;
-}
-
 // ─── Bezier path — vertical tangents guarantee zero angular kinks ─────────────
 // Each connector is one pure cubic bezier. Control points share the anchor's
 // x-coordinate, so the tangent at both endpoints is always perfectly vertical.
@@ -143,13 +138,13 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
     <motion.div
       className="absolute flex flex-col items-center select-none"
       style={{
-        left: node.x - NODE_W / 2,
-        top: node.y - AVATAR_R,
         width: NODE_W,
         pointerEvents: isVisible ? "auto" : "none",
       }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: isVisible ? 1 : 0 }}
+      animate={{
+        left: node.x - NODE_W / 2,
+        top: node.y - AVATAR_R,
+      }}
       transition={{ duration: ANIM_DUR, ease: EASE }}
     >
       {/* Avatar circle */}
@@ -221,9 +216,12 @@ export default function App() {
 
   const [pan, setPan] = useState(() => {
     if (typeof window !== "undefined") {
+      const initW = Math.max(subtreeW(ORG, INITIAL_COLLAPSED) + PADDING * 2, 900);
+      const initRootX = initW / 2;
+      const initRootY = PADDING + AVATAR_R;
       return {
-        x: window.innerWidth / 2 - ROOT_X,
-        y: window.innerHeight * 0.38 - ROOT_Y,
+        x: window.innerWidth / 2 - initRootX,
+        y: window.innerHeight * 0.38 - initRootY,
       };
     }
     return { x: 0, y: 0 };
@@ -245,8 +243,8 @@ export default function App() {
     if (!r.current.on) return;
     const dx = e.clientX - r.current.sx, dy = e.clientY - r.current.sy;
     setPan({
-      x: Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, r.current.px + dx)),
-      y: Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, r.current.py + dy)),
+      x: Math.max(-CANVAS_W_REL + 120, Math.min(window.innerWidth - 120, r.current.px + dx)),
+      y: Math.max(-CANVAS_H_REL + 120, Math.min(window.innerHeight - 120, r.current.py + dy)),
     });
     const now = performance.now();
     const dt = now - v.current.lastT;
@@ -264,8 +262,8 @@ export default function App() {
     if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) return;
     const step = () => {
       setPan(prev => {
-        const nx = Math.max(-CANVAS_W + 120, Math.min(window.innerWidth - 120, prev.x + vx));
-        const ny = Math.max(-CANVAS_H + 120, Math.min(window.innerHeight - 120, prev.y + vy));
+        const nx = Math.max(-CANVAS_W_REL + 120, Math.min(window.innerWidth - 120, prev.x + vx));
+        const ny = Math.max(-CANVAS_H_REL + 120, Math.min(window.innerHeight - 120, prev.y + vy));
         const outOfBounds = nx !== prev.x || ny !== prev.y;
         v.current.vx *= 0.92; v.current.vy *= 0.92;
         if (outOfBounds || (Math.abs(v.current.vx) < 0.02 && Math.abs(v.current.vy) < 0.02)) {
@@ -285,7 +283,11 @@ export default function App() {
       return next;
     });
 
-  const visibleIds = useMemo(() => getVisibleIds(collapsed), [collapsed]);
+  const layoutData = useMemo(() => buildLayout(ORG, Math.max(subtreeW(ORG, collapsed) + PADDING * 2, 900) / 2, PADDING + AVATAR_R, collapsed), [collapsed]);
+  const ALL_NODES_REL = useMemo(() => flatNodes(layoutData), [layoutData]);
+  const ALL_EDGES_REL = useMemo(() => flatEdges(layoutData), [layoutData]);
+  const CANVAS_W_REL = Math.max(subtreeW(ORG, collapsed) + PADDING * 2, 900);
+  const CANVAS_H_REL = Math.max(...ALL_NODES_REL.map(n => n.y)) + AVATAR_R + 120 + PADDING;
 
   return (
     <div
@@ -306,32 +308,32 @@ export default function App() {
           className="relative"
           style={{
             transform: "translate(" + pan.x + "px," + pan.y + "px)",
-            width: CANVAS_W, height: CANVAS_H,
+            width: CANVAS_W_REL, height: CANVAS_H_REL,
             minWidth: "100%", minHeight: "100%",
           }}
         >
           {/* SVG connector layer */}
           <svg
             className="absolute inset-0"
-            width={CANVAS_W}
-            height={CANVAS_H}
+            width={CANVAS_W_REL}
+            height={CANVAS_H_REL}
             style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            {ALL_EDGES.map(edge => (
+            {ALL_EDGES_REL.map(edge => (
               <Connector
                 key={edge.key}
                 edge={edge}
-                visible={visibleIds.has(edge.parentId) && !collapsed.has(edge.parentId)}
+                visible={true}
               />
             ))}
           </svg>
 
           {/* Node layer */}
-          {ALL_NODES.map(node => (
+          {ALL_NODES_REL.map(node => (
             <OrgNode
               key={node.id}
               node={node}
-              isVisible={visibleIds.has(node.id)}
+              isVisible={true}
               isCollapsed={collapsed.has(node.id)}
               onToggle={toggleNode}
             />
