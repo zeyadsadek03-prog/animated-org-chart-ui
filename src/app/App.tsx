@@ -244,7 +244,7 @@ export default function App() {
     if (typeof window !== "undefined") {
       return {
         x: window.innerWidth / 2 - ROOT_X,
-        y: window.innerHeight * 0.42 - ROOT_Y,
+        y: window.innerHeight * 0.38 - ROOT_Y,
       };
     }
     return { x: 0, y: 0 };
