@@ -194,12 +194,40 @@
   #recenter svg{ width:13px; height:13px; }
   #recenter svg path{ stroke:var(--accent-dark); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
 
+  #zoom-controls{
+    position:fixed;
+    right:18px; bottom:24px;
+    z-index:5;
+    display:flex; flex-direction:column;
+    background: var(--card-bg);
+    border:1.5px solid var(--accent);
+    border-radius:14px;
+    box-shadow: var(--shadow);
+    overflow:hidden;
+  }
+  #zoom-controls button{
+    -webkit-appearance:none; appearance:none;
+    border:none; background:transparent;
+    width:42px; height:42px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    color:var(--accent-dark);
+    font-family:'Inter',sans-serif;
+    font-size:19px; font-weight:600;
+    line-height:1;
+    transition: background .15s ease;
+  }
+  #zoom-controls button:active{ background: var(--accent-soft); }
+  #zoom-controls #zoom-in{ border-bottom:1px solid rgba(168,121,28,0.35); }
+
   @media (max-width:600px){
     #topbar{ padding:16px 16px; }
     #topbar h1{ font-size:18px; }
     #topbar p{ display:none; }
     #recenter span{ display:none; }
     #recenter{ padding:10px; }
+    #zoom-controls{ right:14px; bottom:18px; }
+    #zoom-controls button{ width:44px; height:44px; }
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -229,6 +257,11 @@
       <svg id="edges" width="1" height="1"><g id="edges-g"></g></svg>
       <div id="nodes-layer"></div>
     </div>
+  </div>
+
+  <div id="zoom-controls">
+    <button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+    <button id="zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
   </div>
 
 <script>
@@ -268,6 +301,16 @@
   const EXPAND_MS = REDUCED ? 1 : 520;
   const COLLAPSE_MS = REDUCED ? 1 : 380;
   const FADE_MS = REDUCED ? 1 : 320; // must match the .node opacity transition duration in CSS
+  const FOCUS_MS = REDUCED ? 1 : 520;
+
+  /* zoom */
+  const MIN_SCALE = 0.32;
+  const MAX_SCALE = 1.7;
+  const ZOOM_STEP = 1.28;
+  /* padding (in canvas units) around the framed node group when auto-focusing */
+  const FOCUS_PAD_X = 90;
+  const FOCUS_PAD_TOP = 130;
+  const FOCUS_PAD_BOTTOM = 120;
 
   /* ---------------- build node model ---------------- */
   const nodeMap = new Map();
@@ -305,6 +348,8 @@
   const edgesG = document.getElementById('edges-g');
   const bgGrid = document.getElementById('bg-grid');
   const recenterBtn = document.getElementById('recenter');
+  const zoomInBtn = document.getElementById('zoom-in');
+  const zoomOutBtn = document.getElementById('zoom-out');
 
   /* ---------------- create node elements ---------------- */
   function initial(name){ return name.charAt(0).toUpperCase(); }
@@ -527,8 +572,13 @@
     relayout();
     if (node.expanded){
       revealChildren(node);
+      // frame the parent plus all of its direct children so nothing
+      // gets stranded off-screen on narrow viewports
+      focusOnNodes([node, ...node.children], FOCUS_MS);
     } else {
       hideChildren(node);
+      // nothing to fit but this node anymore — pull focus back to it
+      focusOnNodes([node], FOCUS_MS);
     }
     reflowVisible();
   }
@@ -557,38 +607,179 @@
     requestAnimationFrame(tick);
   }
 
-  /* ---------------- pan / drag ---------------- */
-  let panX = 0, panY = 0;
+  /* ---------------- pan / zoom state ---------------- */
+  let panX = 0, panY = 0, scale = 1;
   let isPanning = false, moved = false;
   let startPointer = {x:0,y:0}, startPan = {x:0,y:0};
   let startTarget = null;
   const DRAG_THRESHOLD = 6;
 
-  function setPan(x,y){
-    panX = x; panY = y;
-    canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+  // any in-flight camera tween (pan/zoom) — pointer/wheel/button interaction
+  // always cancels this so the user's input wins
+  let camTween = null;
+
+  function setTransform(x, y, s){
+    panX = x; panY = y; scale = s;
+    canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
     bgGrid.style.transform = `translate(${panX * 0.45}px, ${panY * 0.45}px)`;
+  }
+  // back-compat alias used by drag handling below (keeps current scale)
+  function setPan(x, y){ setTransform(x, y, scale); }
+
+  function animateCamera(toX, toY, toS, duration, onDone){
+    camTween = null;
+    const fromX = panX, fromY = panY, fromS = scale;
+    const start = performance.now();
+    const dur = REDUCED ? 1 : duration;
+    const tweenId = {};
+    camTween = tweenId;
+    function step(now){
+      if (camTween !== tweenId) return; // superseded by newer interaction
+      const t = Math.min(1, (now - start) / dur);
+      const e = ease(t);
+      setTransform(lerp(fromX, toX, e), lerp(fromY, toY, e), lerp(fromS, toS, e));
+      if (t < 1){
+        requestAnimationFrame(step);
+      } else {
+        camTween = null;
+        if (onDone) onDone();
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ---------------- auto-focus (fit a group of nodes on screen) --------- */
+  function focusOnNodes(nodes, duration){
+    if (!nodes.length) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of nodes){
+      minX = Math.min(minX, n.targetX); maxX = Math.max(maxX, n.targetX);
+      minY = Math.min(minY, n.targetY); maxY = Math.max(maxY, n.targetY);
+    }
+    minX -= FOCUS_PAD_X; maxX += FOCUS_PAD_X;
+    minY -= FOCUS_PAD_TOP; maxY += FOCUS_PAD_BOTTOM;
+
+    const vw = viewport.clientWidth, vh = viewport.clientHeight;
+    const groupW = Math.max(1, maxX - minX);
+    const groupH = Math.max(1, maxY - minY);
+    const fitScale = Math.min(vw / groupW, vh / groupH);
+    const targetScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, fitScale));
+
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const targetPanX = vw / 2 - targetScale * cx;
+    const targetPanY = vh / 2 - targetScale * cy;
+
+    animateCamera(targetPanX, targetPanY, targetScale, duration);
+  }
+
+  /* ---------------- manual zoom (buttons / wheel / pinch) --------------- */
+  function zoomAround(screenX, screenY, newScale, animated){
+    newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+    // keep the canvas point currently under (screenX,screenY) fixed on screen
+    const targetPanX = screenX - (newScale / scale) * (screenX - panX);
+    const targetPanY = screenY - (newScale / scale) * (screenY - panY);
+    if (animated){
+      animateCamera(targetPanX, targetPanY, newScale, 220);
+    } else {
+      camTween = null;
+      setTransform(targetPanX, targetPanY, newScale);
+    }
+  }
+
+  zoomInBtn.addEventListener('click', () => {
+    zoomAround(viewport.clientWidth / 2, viewport.clientHeight / 2, scale * ZOOM_STEP, true);
+  });
+  zoomOutBtn.addEventListener('click', () => {
+    zoomAround(viewport.clientWidth / 2, viewport.clientHeight / 2, scale / ZOOM_STEP, true);
+  });
+
+  // desktop trackpad / mouse wheel zoom, anchored under the cursor
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    camTween = null;
+    const rect = viewport.getBoundingClientRect();
+    const factor = Math.exp(-e.deltaY * 0.0016);
+    zoomAround(e.clientX - rect.left, e.clientY - rect.top, scale * factor, false);
+  }, { passive:false });
+
+  /* ---------------- pan / pinch (pointer events) ---------------- */
+  const activePointers = new Map(); // pointerId -> {x,y}
+  let pinching = false;
+  let pinchStartDist = 1, pinchStartScale = 1;
+  let pinchAnchor = {x:0,y:0}; // screen-space anchor point, held fixed while pinching
+
+  function pointerDist(){
+    const pts = Array.from(activePointers.values());
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+  function pointerMid(){
+    const pts = Array.from(activePointers.values());
+    return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
   }
 
   viewport.addEventListener('pointerdown', e => {
+    viewport.setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    camTween = null;
+
+    if (activePointers.size === 2){
+      // entering pinch mode — stop treating this as a tap/drag
+      isPanning = false;
+      pinching = true;
+      pinchStartDist = pointerDist();
+      pinchStartScale = scale;
+      const rect = viewport.getBoundingClientRect();
+      const mid = pointerMid();
+      pinchAnchor = { x: mid.x - rect.left, y: mid.y - rect.top };
+      startTarget = null;
+      return;
+    }
+
     isPanning = true; moved = false;
     startPointer = { x: e.clientX, y: e.clientY };
     startPan = { x: panX, y: panY };
     // Capture the real element under the pointer now — once we call
-    // setPointerCapture below, e.target on later events (pointerup) gets
+    // setPointerCapture above, e.target on later events (pointerup) gets
     // retargeted to the capturing element itself, so it can't be used
     // to find which node (if any) was tapped.
     startTarget = e.target;
-    viewport.setPointerCapture(e.pointerId);
     viewport.classList.add('grabbing');
   });
+
   viewport.addEventListener('pointermove', e => {
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pinching && activePointers.size >= 2){
+      const dist = pointerDist();
+      const newScale = pinchStartScale * (dist / pinchStartDist);
+      zoomAround(pinchAnchor.x, pinchAnchor.y, newScale, false);
+      return;
+    }
+
     if (!isPanning) return;
     const dx = e.clientX - startPointer.x, dy = e.clientY - startPointer.y;
     if (!moved && Math.hypot(dx,dy) > DRAG_THRESHOLD) moved = true;
     if (moved) setPan(startPan.x + dx, startPan.y + dy);
   });
+
   function endPan(e){
+    activePointers.delete(e.pointerId);
+
+    if (pinching){
+      if (activePointers.size < 2){
+        pinching = false;
+        // resume single-finger panning smoothly from here, if a pointer remains
+        const remaining = Array.from(activePointers.values())[0];
+        if (remaining){
+          isPanning = true; moved = true;
+          startPointer = { x: remaining.x, y: remaining.y };
+          startPan = { x: panX, y: panY };
+        }
+      }
+      return;
+    }
+
     if (!isPanning) return;
     isPanning = false;
     viewport.classList.remove('grabbing');
@@ -603,7 +794,9 @@
   }
   viewport.addEventListener('pointerup', endPan);
   viewport.addEventListener('pointercancel', endPan);
-  viewport.addEventListener('lostpointercapture', () => {
+  viewport.addEventListener('lostpointercapture', e => {
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) pinching = false;
     isPanning = false;
     viewport.classList.remove('grabbing');
   });
@@ -613,17 +806,9 @@
     const vw = viewport.clientWidth, vh = viewport.clientHeight;
     const targetPanX = vw / 2 - root.curX;
     const targetPanY = vh * 0.34 - root.curY;
-    if (!animated){ setPan(targetPanX, targetPanY); return; }
-    const fromX = panX, fromY = panY;
-    const start = performance.now();
-    const dur = REDUCED ? 1 : 480;
-    function step(now){
-      const t = Math.min(1, (now - start) / dur);
-      const e = ease(t);
-      setPan(lerp(fromX, targetPanX, e), lerp(fromY, targetPanY, e));
-      if (t < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+    if (!animated){ setTransform(targetPanX, targetPanY, 1); return; }
+    camTween = null;
+    animateCamera(targetPanX, targetPanY, 1, 480);
   }
   recenterBtn.addEventListener('click', () => centerOnRoot(true));
 
