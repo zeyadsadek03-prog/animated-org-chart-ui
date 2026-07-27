@@ -237,9 +237,10 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(ALL_NODES.filter(n => n.children.length > 0).map(n => n.id)));
   // Step 1 diagnostic: log recomputed positions without changing rendered output
-  useMemo(() => {
+  useEffect(() => {
     const layout = buildVisibleLayout(ROOT_NODE, ROOT_X, ROOT_Y, collapsed);
-    console.log("[reflow] visible layout ids:", layout.id, layout.children.map(x => ({ id: x.id, x: x.x })));
+    const fmt = (n: any, depth = 0): any => ({ id: n.id, x: n.x, children: n.children.map((c: any) => fmt(c, depth + 1)) });
+    console.log("[reflow] visible layout", fmt(layout));
   }, [collapsed]);
 
   const [pan, setPan] = useState(() => {
