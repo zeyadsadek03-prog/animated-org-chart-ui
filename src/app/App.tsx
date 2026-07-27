@@ -154,6 +154,7 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
     >
       {/* Avatar circle */}
       <button
+        data-node-button
         onClick={() => hasChildren && onToggle(node.id)}
         className="relative rounded-full flex items-center justify-center transition-all duration-200 focus:outline-none group"
         style={{
@@ -232,7 +233,7 @@ export default function App() {
   const r = useRef({ on: false, sx: 0, sy: 0, px: 0, py: 0 });
 
   const ptrDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest("[data-node-button]")) return;
     cancelAnimationFrame(v.current.raf);
     r.current.on = true;
     r.current.sx = e.clientX; r.current.sy = e.clientY;
