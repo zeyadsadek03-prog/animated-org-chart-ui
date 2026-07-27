@@ -320,7 +320,6 @@ export default function App() {
             position: "absolute", inset: 0,
             backgroundImage: "radial-gradient(circle, #c4c4c4 1px, transparent 1px)",
             backgroundSize: "22px 22px",
-            transform: "translate(" + -pan.x * 0.35 + "px, " + -pan.y * 0.35 + "px)",
             pointerEvents: "none",
           }}
         />
