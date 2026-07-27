@@ -56,21 +56,23 @@ const ORG: Person = {
   ],
 };
 
-// ─── Layout (recursive, computed once from static data) ───────────────────────
-function subtreeW(n: Person): number {
-  if (!n.children.length) return NODE_W;
-  return n.children.reduce((s, c) => s + subtreeW(c), 0) + (n.children.length - 1) * H_GAP;
+// ─── Layout (reactive: recalculates when collapsed changes) ──────────────────
+function subtreeW(node: Person, collapsed: Set<string>): number {
+  if (collapsed.has(node.id) || !node.children.length) return NODE_W;
+  return node.children.reduce((s, c) => s + subtreeW(c, collapsed), 0) + (node.children.length - 1) * H_GAP;
 }
 
-function buildLayout(node: Person, cx: number, cy: number): LayoutNode {
-  const widths = node.children.map(subtreeW);
-  const total  = widths.reduce((s, w) => s + w, 0) + (node.children.length - 1) * H_GAP;
+function buildLayout(node: Person, cx: number, cy: number, collapsed: Set<string>): LayoutNode {
+  const isCollapsed = collapsed.has(node.id);
+  const hasVisibleChildren = !isCollapsed && node.children.length > 0;
+  const widths = hasVisibleChildren ? node.children.map(c => subtreeW(c, collapsed)) : [];
+  const total = hasVisibleChildren ? widths.reduce((s, w) => s + w, 0) + (node.children.length - 1) * H_GAP : 0;
   let ox = cx - total / 2;
-  const children = node.children.map((child, i) => {
-    const lc = buildLayout(child, ox + widths[i] / 2, cy + V_GAP);
+  const children = hasVisibleChildren ? node.children.map((child, i) => {
+    const lc = buildLayout(child, ox + widths[i] / 2, cy + V_GAP, collapsed);
     ox += widths[i] + H_GAP;
     return lc;
-  });
+  }) : [];
   return { id: node.id, name: node.name, bg: node.bg, x: cx, y: cy, children };
 }
 
@@ -81,16 +83,6 @@ function flatEdges(n: LayoutNode): Edge[] {
     ...n.children.flatMap(flatEdges),
   ];
 }
-
-// Compute everything at module level — these values never change
-const TREE_W    = subtreeW(ORG);
-const CANVAS_W  = Math.max(TREE_W + PADDING * 2, 900);
-const ROOT_X    = CANVAS_W / 2;
-const ROOT_Y    = PADDING + AVATAR_R;
-const ROOT_NODE = buildLayout(ORG as any, ROOT_X, ROOT_Y);
-const ALL_NODES = flatNodes(ROOT_NODE);
-const ALL_EDGES = flatEdges(ROOT_NODE);
-const CANVAS_H  = Math.max(...ALL_NODES.map(n => n.y)) + AVATAR_R + 120 + PADDING;
 // ─── Visibility helper ────────────────────────────────────────────────────────
 function getVisibleIds(collapsed: Set<string>): Set<string> {
   const vis = new Set<string>();
@@ -143,13 +135,11 @@ function OrgNode({ node, isVisible, isCollapsed, onToggle }: {
     <motion.div
       className="absolute flex flex-col items-center select-none"
       style={{
-        left: node.x - NODE_W / 2,
-        top: node.y - AVATAR_R,
         width: NODE_W,
         pointerEvents: isVisible ? "auto" : "none",
       }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: isVisible ? 1 : 0 }}
+      initial={{ opacity: 0, left: node.x - NODE_W / 2, top: node.y - AVATAR_R }}
+      animate={{ left: node.x - NODE_W / 2, top: node.y - AVATAR_R, opacity: isVisible ? 1 : 0 }}
       transition={{ duration: ANIM_DUR, ease: EASE }}
     >
       {/* Avatar circle */}
@@ -285,7 +275,9 @@ export default function App() {
       return next;
     });
 
-  const visibleIds = useMemo(() => getVisibleIds(collapsed), [collapsed]);
+  const reactiveRoot = useMemo(() => buildLayout(ORG as any, CANVAS_W / 2, ROOT_Y, collapsed), [collapsed]);
+  const reactiveNodes = useMemo(() => flatNodes(reactiveRoot), [reactiveRoot]);
+  const reactiveEdges = useMemo(() => flatEdges(reactiveRoot), [reactiveRoot]);
 
   return (
     <div
@@ -317,7 +309,7 @@ export default function App() {
             height={CANVAS_H}
             style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            {ALL_EDGES.map(edge => (
+            {reactiveEdges.map(edge => (
               <Connector
                 key={edge.key}
                 edge={edge}
@@ -327,7 +319,7 @@ export default function App() {
           </svg>
 
           {/* Node layer */}
-          {ALL_NODES.map(node => (
+          {reactiveNodes.map(node => (
             <OrgNode
               key={node.id}
               node={node}
