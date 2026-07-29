@@ -105,18 +105,40 @@
     width:68px; height:68px;
     border-radius:50%;
     background: var(--card-bg);
-    border: 1.6px dashed rgba(168,121,28,0.45);
     display:flex; align-items:center; justify-content:center;
     font-family:'Fraunces', serif;
     font-weight:600;
     font-size:24px;
     color: var(--ink);
     box-shadow: var(--shadow);
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    transition: box-shadow .18s ease;
   }
   .node[data-depth="0"] .avatar{
     background: linear-gradient(180deg, var(--accent-soft), var(--card-bg) 70%);
+  }
+  /* dashed ring lives on its own rotating pseudo-element so the
+     initials/text inside the avatar stay upright */
+  .avatar::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border: 1.6px dashed rgba(168,121,28,0.45);
+    animation: ring-spin 12s linear infinite;
+    pointer-events:none;
+  }
+  .node[data-depth="0"] .avatar::before{
     border-color: rgba(168,121,28,0.65);
+  }
+  .node .hit:hover .avatar::before{
+    border-color: var(--accent-dark);
+  }
+  @keyframes ring-spin{
+    from{ transform: rotate(0deg); }
+    to{ transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .avatar::before{ animation:none; }
   }
   .node .hit:hover .avatar{
     transform: translateY(-2px);
@@ -577,8 +599,14 @@
       focusOnNodes([node, ...node.children], FOCUS_MS);
     } else {
       hideChildren(node);
-      // nothing to fit but this node anymore — pull focus back to it
-      focusOnNodes([node], FOCUS_MS);
+      // Pull focus back out to the level this node lives in — its parent
+      // plus siblings — instead of zooming tight on just this node.
+      // Falls back to the whole visible tree when collapsing the root.
+      if (node.parent){
+        focusOnNodes([node.parent, ...node.parent.children], FOCUS_MS);
+      } else {
+        focusOnNodes(allNodes.filter(n => n.visible), FOCUS_MS);
+      }
     }
     reflowVisible();
   }
