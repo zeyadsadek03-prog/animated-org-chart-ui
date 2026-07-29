@@ -116,6 +116,10 @@
   .node[data-depth="0"] .avatar{
     background: linear-gradient(180deg, var(--accent-soft), var(--card-bg) 70%);
   }
+  .avatar.has-photo{
+    background: transparent;
+    box-shadow: none;
+  }
   /* dashed ring lives on its own rotating pseudo-element so the
      initials/text inside the avatar stay upright */
   .avatar::before{
@@ -123,12 +127,12 @@
     position:absolute;
     inset:0;
     border-radius:50%;
-    border: 1.6px dashed rgba(168,121,28,0.45);
+    border: 2.4px dashed rgba(168,121,28,0.6);
     animation: ring-spin 12s linear infinite;
     pointer-events:none;
   }
   .node[data-depth="0"] .avatar::before{
-    border-color: rgba(168,121,28,0.65);
+    border-color: rgba(168,121,28,0.85);
   }
   .node .hit:hover .avatar::before{
     border-color: var(--accent-dark);
@@ -404,6 +408,7 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     avatar.className = 'avatar';
     const photoSrc = (typeof nodePhotos !== 'undefined') ? nodePhotos[node.id] : null;
     if (photoSrc){
+      avatar.classList.add('has-photo');
       const img = document.createElement('img');
       img.className = 'avatar-photo';
       img.src = photoSrc;
