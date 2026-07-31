@@ -311,73 +311,305 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
   /* ---------------- data ---------------- */
   const treeData = {
-    id:'kara', name:'Kara', spouse:{ id:'nabauyia', name:'Nabauyia' }, children:[
-      { id:'sabah', name:'Sabah', spouse:{ id:'idris', name:'Idris' }, children:[
-        { id:'mohamed', name:'Mohamed', spouse:{ id:'ashwaq', name:'Ashwaq' }, children:[
-          { id:'zeyad', name:'Zeyad' },
-          { id:'shahd_mohamed', name:'Shahd' },
-          { id:'moaz', name:'Moaz' },
-        ]},
-        { id:'osama', name:'Osama', spouse:{ id:'salwa', name:'Salwa' }, children:[
-          { id:'kareem', name:'Kareem' },
-          { id:'momin', name:'Momin' },
-        ]},
-        { id:'nesrin', name:'Nessrin', spouse:{ id:'essam', name:'Essam' }, children:[
-          { id:'adham', name:'Adham' },
-          { id:'faisal', name:'Faisal' },
-          { id:'bassam', name:'Bassam' },
-        ]},
-      ]},
-      { id:'fathi', name:'Fathi', spouse:{ id:'kika', name:'Kika' }, children:[
-        { id:'walid_f', name:'Walid', spouse:{ id:'shaima', name:'Shaima' }, children:[
-          { id:'yusuuf_f', name:'Yusuuf' },
-          { id:'yumna_f', name:'Yumna' },
-          { id:'yasin_f', name:'Yasin' },
-        ]},
-        { id:'wala', name:'Wala', spouse:{ id:'mustafa_wala', name:'Mustafa' }, children:[
-          { id:'ahmed', name:'Ahmed' },
-        ]},
-        { id:'wisam', name:'Wisam', spouse:{ id:'unknown_wisam', name:'Unknown' } },
-      ]},
-      { id:'layla', name:'Layla', spouse:{ id:'basyuni', name:'Basyuni' }, children:[
-        { id:'samih', name:'Samih', spouse:{ id:'unknown_samih', name:'Unknown' }, children:[
-          { id:'basant', name:'Basant' },
-        ]},
-        { id:'walid_l', name:'Walid', spouse:{ id:'su3da', name:'Su3da' }, children:[
-          { id:'shahd_walid_l', name:'Shahd' },
-          { id:'girl_walid_l', name:'Unknown' },
-        ]},
-        { id:'hind', name:'Hind', spouse:{ id:'mustafa_hind', name:'Mustafa' }, children:[
-          { id:'mustafa_hind_child', name:'Mustafa' },
-          { id:'mahmoud_hind', name:'Mahmoud' },
-        ]},
-        { id:'shayma', name:'Shayma', spouse:{ id:'walid_shayma', name:'Walid' }, children:[
-          { id:'yusuuf_shayma', name:'Yusuuf' },
-          { id:'yumna_shayma', name:'Yumna' },
-          { id:'yasin_shayma', name:'Yasin' },
-        ]},
-        { id:'batta', name:'Batta' },
-      ]},
-      { id:'magdi', name:'Magdi', spouse:{ id:'muna', name:'Muna' }, children:[
-        { id:'mahmoud_magdi', name:'Mahmoud', spouse:{ id:'unknown_mahmoud_magdi', name:'Unknown' } },
-        { id:'hamada', name:'Hamada', spouse:{ id:'unknown_hamada', name:'Unknown' }, children:[
-          { id:'boy_hamada', name:'Unknown' },
-        ]},
-        { id:'mustafa_magdi', name:'Mustafa' },
-        { id:'girl_magdi', name:'Unknown' },
-      ]},
-      { id:'husna', name:'Husna', spouse:{ id:'unknown_husna', name:'Unknown' }, children:[
-        { id:'amira', name:'Amira', spouse:{ id:'hamo', name:'Hamo' }, children:[
-          { id:'ibrahim', name:'Ibrahim' },
-          { id:'hba', name:'Hba' },
-          { id:'boy_amira_1', name:'Unknown' },
-          { id:'boy_amira_2', name:'Unknown' },
-        ]},
-      ]},
+    id:'kara',
+    name:'Kara',
+    spouse:{
+      id:'nabauyia',
+      name:'Nabauyia'
+    },
+    children:[
+      {
+        id:'idris',
+        name:'Idris',
+        spouse:{
+          id:'sabah',
+          name:'Sabah'
+        },
+        children:[
+          {
+            id:'mohamed',
+            name:'Mohamed',
+            spouse:{
+              id:'ashwaq',
+              name:'Ashwaq'
+            },
+            children:[
+              {
+                id:'zeyad',
+                name:'Zeyad'
+              },
+              {
+                id:'shahd_mohamed',
+                name:'Shahd'
+              },
+              {
+                id:'moaz',
+                name:'Moaz'
+              }
+            ]
+          },
+          {
+            id:'osama',
+            name:'Osama',
+            spouse:{
+              id:'salwa',
+              name:'Salwa'
+            },
+            children:[
+              {
+                id:'kareem',
+                name:'Kareem'
+              },
+              {
+                id:'momin',
+                name:'Momin'
+              }
+            ]
+          },
+          {
+            id:'essam',
+            name:'Essam',
+            spouse:{
+              id:'nesrin',
+              name:'Nessrin'
+            },
+            children:[
+              {
+                id:'adham',
+                name:'Adham'
+              },
+              {
+                id:'faisal',
+                name:'Faisal'
+              },
+              {
+                id:'bassam',
+                name:'Bassam'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id:'fathi',
+        name:'Fathi',
+        spouse:{
+          id:'kika',
+          name:'Kika'
+        },
+        children:[
+          {
+            id:'walid_f',
+            name:'Walid',
+            spouse:{
+              id:'shaima',
+              name:'Shaima'
+            },
+            children:[
+              {
+                id:'yusuuf_f',
+                name:'Yusuuf'
+              },
+              {
+                id:'yumna_f',
+                name:'Yumna'
+              },
+              {
+                id:'yasin_f',
+                name:'Yasin'
+              }
+            ]
+          },
+          {
+            id:'wala',
+            name:'Wala',
+            spouse:{
+              id:'mustafa_wala',
+              name:'Mustafa'
+            },
+            children:[
+              {
+                id:'ahmed',
+                name:'Ahmed'
+              }
+            ]
+          },
+          {
+            id:'wisam',
+            name:'Wisam',
+            spouse:{
+              id:'unknown_wisam',
+              name:'Unknown'
+            }
+          }
+        ]
+      },
+      {
+        id:'basyuni',
+        name:'Basyuni',
+        spouse:{
+          id:'layla',
+          name:'Layla'
+        },
+        children:[
+          {
+            id:'samih',
+            name:'Samih',
+            spouse:{
+              id:'unknown_samih',
+              name:'Unknown'
+            },
+            children:[
+              {
+                id:'basant',
+                name:'Basant'
+              }
+            ]
+          },
+          {
+            id:'walid_l',
+            name:'Walid',
+            spouse:{
+              id:'su3da',
+              name:'Su3da'
+            },
+            children:[
+              {
+                id:'shahd_walid_l',
+                name:'Shahd'
+              },
+              {
+                id:'girl_walid_l',
+                name:'Unknown'
+              }
+            ]
+          },
+          {
+            id:'mustafa_hind',
+            name:'Mustafa',
+            spouse:{
+              id:'hind',
+              name:'Hind'
+            },
+            children:[
+              {
+                id:'mustafa_hind_child',
+                name:'Mustafa'
+              },
+              {
+                id:'mahmoud_hind',
+                name:'Mahmoud'
+              }
+            ]
+          },
+          {
+            id:'walid_shayma',
+            name:'Walid',
+            spouse:{
+              id:'shayma',
+              name:'Shayma'
+            },
+            children:[
+              {
+                id:'yusuuf_shayma',
+                name:'Yusuuf'
+              },
+              {
+                id:'yumna_shayma',
+                name:'Yumna'
+              },
+              {
+                id:'yasin_shayma',
+                name:'Yasin'
+              }
+            ]
+          },
+          {
+            id:'batta',
+            name:'Batta'
+          }
+        ]
+      },
+      {
+        id:'magdi',
+        name:'Magdi',
+        spouse:{
+          id:'muna',
+          name:'Muna'
+        },
+        children:[
+          {
+            id:'mahmoud_magdi',
+            name:'Mahmoud',
+            spouse:{
+              id:'unknown_mahmoud_magdi',
+              name:'Unknown'
+            }
+          },
+          {
+            id:'hamada',
+            name:'Hamada',
+            spouse:{
+              id:'unknown_hamada',
+              name:'Unknown'
+            },
+            children:[
+              {
+                id:'boy_hamada',
+                name:'Unknown'
+              }
+            ]
+          },
+          {
+            id:'mustafa_magdi',
+            name:'Mustafa'
+          },
+          {
+            id:'girl_magdi',
+            name:'Unknown'
+          }
+        ]
+      },
+      {
+        id:'unknown_husna',
+        name:'Unknown',
+        spouse:{
+          id:'husna',
+          name:'Husna'
+        },
+        children:[
+          {
+            id:'hamo',
+            name:'Hamo',
+            spouse:{
+              id:'amira',
+              name:'Amira'
+            },
+            children:[
+              {
+                id:'ibrahim',
+                name:'Ibrahim'
+              },
+              {
+                id:'hba',
+                name:'Hba'
+              },
+              {
+                id:'boy_amira_1',
+                name:'Unknown'
+              },
+              {
+                id:'boy_amira_2',
+                name:'Unknown'
+              }
+            ]
+          }
+        ]
+      }
     ]
   };
 
-  /* ---------------- layout constants ---------------- */
+    /* ---------------- layout constants ---------------- */
   const AVATAR_R = 34;
   const CARD_HALF_W = 60;
   const LEVEL_H = 190;
