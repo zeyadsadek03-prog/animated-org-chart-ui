@@ -281,7 +281,7 @@
   <div id="topbar">
     <div>
       <p class="eyebrow">Lineage</p>
-      <h1>The Idris Family</h1>
+      <h1>The Kara Family</h1>
       <p>Tap any circle to open or close their branch. Drag to pan around.</p>
     </div>
     <button id="recenter" title="Recenter on root">
@@ -311,20 +311,68 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
   /* ---------------- data ---------------- */
   const treeData = {
-    id:'idris', name:'Idris', children:[
-      { id:'muhammad', name:'Muhammad', children:[
-        { id:'zeyad', name:'Zeyad' },
-        { id:'moaz', name:'Moaz' },
-        { id:'shahd', name:'Shahd' },
+    id:'kara', name:'Kara', spouse:{ id:'nabauyia', name:'Nabauyia' }, children:[
+      { id:'sabah', name:'Sabah', spouse:{ id:'idris', name:'Idris' }, children:[
+        { id:'mohamed', name:'Mohamed', spouse:{ id:'ashwaq', name:'Ashwaq' }, children:[
+          { id:'zeyad', name:'Zeyad' },
+          { id:'shahd_mohamed', name:'Shahd' },
+          { id:'moaz', name:'Moaz' },
+        ]},
+        { id:'osama', name:'Osama', spouse:{ id:'salwa', name:'Salwa' }, children:[
+          { id:'kareem', name:'Kareem' },
+          { id:'momin', name:'Momin' },
+        ]},
+        { id:'nesrin', name:'Nessrin', spouse:{ id:'essam', name:'Essam' }, children:[
+          { id:'adham', name:'Adham' },
+          { id:'faisal', name:'Faisal' },
+          { id:'bassam', name:'Bassam' },
+        ]},
       ]},
-      { id:'osama', name:'Osama', children:[
-        { id:'kareem', name:'Kareem' },
-        { id:'momin', name:'Momin' },
+      { id:'fathi', name:'Fathi', spouse:{ id:'kika', name:'Kika' }, children:[
+        { id:'walid_f', name:'Walid', spouse:{ id:'shaima', name:'Shaima' }, children:[
+          { id:'yusuuf_f', name:'Yusuuf' },
+          { id:'yumna_f', name:'Yumna' },
+          { id:'yasin_f', name:'Yasin' },
+        ]},
+        { id:'wala', name:'Wala', spouse:{ id:'mustafa_wala', name:'Mustafa' }, children:[
+          { id:'ahmed', name:'Ahmed' },
+        ]},
+        { id:'wisam', name:'Wisam', spouse:{ id:'unknown_wisam', name:'Unknown' } },
       ]},
-      { id:'nesrin', name:'Nesrin', children:[
-        { id:'adham', name:'Adham' },
-        { id:'faisal', name:'Faisal' },
-        { id:'bassam', name:'Bassam' },
+      { id:'layla', name:'Layla', spouse:{ id:'basyuni', name:'Basyuni' }, children:[
+        { id:'samih', name:'Samih', spouse:{ id:'unknown_samih', name:'Unknown' }, children:[
+          { id:'basant', name:'Basant' },
+        ]},
+        { id:'walid_l', name:'Walid', spouse:{ id:'su3da', name:'Su3da' }, children:[
+          { id:'shahd_walid_l', name:'Shahd' },
+          { id:'girl_walid_l', name:'Unknown' },
+        ]},
+        { id:'hind', name:'Hind', spouse:{ id:'mustafa_hind', name:'Mustafa' }, children:[
+          { id:'mustafa_hind_child', name:'Mustafa' },
+          { id:'mahmoud_hind', name:'Mahmoud' },
+        ]},
+        { id:'shayma', name:'Shayma', spouse:{ id:'walid_shayma', name:'Walid' }, children:[
+          { id:'yusuuf_shayma', name:'Yusuuf' },
+          { id:'yumna_shayma', name:'Yumna' },
+          { id:'yasin_shayma', name:'Yasin' },
+        ]},
+        { id:'batta', name:'Batta' },
+      ]},
+      { id:'magdi', name:'Magdi', spouse:{ id:'muna', name:'Muna' }, children:[
+        { id:'mahmoud_magdi', name:'Mahmoud', spouse:{ id:'unknown_mahmoud_magdi', name:'Unknown' } },
+        { id:'hamada', name:'Hamada', spouse:{ id:'unknown_hamada', name:'Unknown' }, children:[
+          { id:'boy_hamada', name:'Unknown' },
+        ]},
+        { id:'mustafa_magdi', name:'Mustafa' },
+        { id:'girl_magdi', name:'Unknown' },
+      ]},
+      { id:'husna', name:'Husna', spouse:{ id:'unknown_husna', name:'Unknown' }, children:[
+        { id:'amira', name:'Amira', spouse:{ id:'hamo', name:'Hamo' }, children:[
+          { id:'ibrahim', name:'Ibrahim' },
+          { id:'hba', name:'Hba' },
+          { id:'boy_amira_1', name:'Unknown' },
+          { id:'boy_amira_2', name:'Unknown' },
+        ]},
       ]},
     ]
   };
@@ -337,6 +385,8 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   const TOP_MARGIN = 90;
   const PARENT_BOTTOM_OFFSET = 70;
   const CHILD_TOP_OFFSET = AVATAR_R;
+  const SPOUSE_GAP = 9;
+  const SPOUSE_W = LEAF_W;
 
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const EXPAND_MS = REDUCED ? 1 : 520;
@@ -371,10 +421,32 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       curX: 0, curY: 0,
       targetX: 0, targetY: 0,
       _w: LEAF_W,
-      tween: null
+      tween: null,
+      spouse: null
     };
     if (raw.children && raw.children.length){
       node.children = raw.children.map(c => buildTree(c, node, depth + 1));
+    }
+    if (raw.spouse){
+      const spouseNode = {
+        _uid: 'n' + (idCounter++),
+        id: raw.spouse.id,
+        name: raw.spouse.name,
+        parent: node,
+        depth,
+        children: [],
+        expanded: false,
+        visible: false,
+        el: null,
+        curX: 0, curY: 0,
+        targetX: 0, targetY: 0,
+        _w: LEAF_W,
+        tween: null,
+        spouse: null,
+        isSpouse: true
+      };
+      nodeMap.set(spouseNode.id, spouseNode);
+      node.spouse = spouseNode;
     }
     nodeMap.set(node.id, node);
     return node;
@@ -450,10 +522,11 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   // stationary position — only the line's reveal is animated.
   function addEdgeDrawn(node, duration, onDrawComplete){
     const pathEl = getOrCreatePath(node.id);
-    activeEdges.set(node.id, { parent: node.parent, child: node, pathEl });
+    activeEdges.set(node.id, { type:'parent-child', parent: node.parent, child: node, pathEl });
 
     const p = node.parent;
-    const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
+    const branch = p.spouse || p;
+    const x1 = branch.curX, y1 = branch.curY + PARENT_BOTTOM_OFFSET;
     const x2 = node.curX, y2 = node.curY - CHILD_TOP_OFFSET;
     pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
 
@@ -463,6 +536,32 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     pathEl.style.strokeDashoffset = String(len);
     // force reflow so the "none" transition + starting offset are committed
     // before we switch to the animated end state
+    pathEl.getBoundingClientRect();
+    pathEl.style.transition = `stroke-dashoffset ${duration}ms ease`;
+    requestAnimationFrame(() => { pathEl.style.strokeDashoffset = '0'; });
+
+    window.setTimeout(() => {
+      pathEl.style.strokeDasharray = '';
+      pathEl.style.strokeDashoffset = '';
+      pathEl.style.transition = '';
+      if (onDrawComplete) onDrawComplete();
+    }, duration);
+  }
+
+  // Straight horizontal connector between a node and its spouse. Same
+  // dash-reveal technique as addEdgeDrawn, but a straight line, not a curve.
+  function addSpouseEdgeDrawn(node, spouse, duration, onDrawComplete){
+    const pathEl = getOrCreatePath(spouse.id);
+    activeEdges.set(spouse.id, { type:'spouse', a: node, b: spouse, pathEl });
+
+    const x1 = node.curX + AVATAR_R, y1 = node.curY;
+    const x2 = spouse.curX - AVATAR_R, y2 = spouse.curY;
+    pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+
+    const len = pathEl.getTotalLength() || 1;
+    pathEl.style.transition = 'none';
+    pathEl.style.strokeDasharray = String(len);
+    pathEl.style.strokeDashoffset = String(len);
     pathEl.getBoundingClientRect();
     pathEl.style.transition = `stroke-dashoffset ${duration}ms ease`;
     requestAnimationFrame(() => { pathEl.style.strokeDashoffset = '0'; });
@@ -505,33 +604,62 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
 
   function updateConnectors(){
     activeEdges.forEach(edge => {
-      const p = edge.parent, c = edge.child;
-      const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
-      const x2 = c.curX, y2 = c.curY - CHILD_TOP_OFFSET;
-      edge.pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
+      if (edge.type === 'spouse'){
+        const x1 = edge.a.curX + AVATAR_R, y1 = edge.a.curY;
+        const x2 = edge.b.curX - AVATAR_R, y2 = edge.b.curY;
+        edge.pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+      } else {
+        const p = edge.parent, c = edge.child;
+        const branch = p.spouse || p;
+        const x1 = branch.curX, y1 = branch.curY + PARENT_BOTTOM_OFFSET;
+        const x2 = c.curX, y2 = c.curY - CHILD_TOP_OFFSET;
+        edge.pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
+      }
     });
   }
 
   /* ---------------- layout ---------------- */
   function measure(node){
+    let w;
     if (!node.expanded || node.children.length === 0){
-      node._w = LEAF_W;
-      return node._w;
+      w = LEAF_W;
+    } else {
+      w = 0;
+      for (const c of node.children) w += measure(c);
     }
-    let w = 0;
-    for (const c of node.children) w += measure(c);
+    if (node.expanded && node.spouse){
+      // node.targetX ends up ~w/2 from its own left edge (it's centered
+      // above its children); the spouse sits just to the right of that
+      // center, so only widen the band if the spouse would poke past it.
+      const relCenter = w / 2;
+      const spouseRightEdge = relCenter + AVATAR_R + SPOUSE_GAP + SPOUSE_W;
+      w = Math.max(w, spouseRightEdge);
+    }
     node._w = w;
     return w;
   }
   function place(node, left, depth){
     node.targetY = TOP_MARGIN + depth * LEVEL_H;
+    let childrenW;
     if (!node.expanded || node.children.length === 0){
+      childrenW = LEAF_W;
       node.targetX = left + LEAF_W / 2;
     } else {
       let cur = left;
       for (const c of node.children){ place(c, cur, depth + 1); cur += c._w; }
+      childrenW = cur - left;
       const first = node.children[0], last = node.children[node.children.length - 1];
       node.targetX = (first.targetX + last.targetX) / 2;
+    }
+    if (node.spouse){
+      if (node.expanded){
+        // anchor to this node's own center, not the children band's edge
+        node.spouse.targetY = node.targetY;
+        node.spouse.targetX = node.targetX + AVATAR_R + SPOUSE_GAP + SPOUSE_W / 2;
+      } else {
+        node.spouse.targetX = node.targetX;
+        node.spouse.targetY = node.targetY;
+      }
     }
   }
   function relayout(){
@@ -576,6 +704,14 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
         child.tween = null;
         removeEdge(child.id);
       }
+      if (child.spouse && child.spouse.visible){
+        const s = child.spouse;
+        s.visible = false;
+        s.el.style.display = 'none';
+        s.el.classList.remove('is-visible');
+        s.tween = null;
+        removeEdge(s.id);
+      }
       hideDescendantsInstant(child);
     }
   }
@@ -615,18 +751,60 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     }
   }
 
+  /* ---------------- spouse reveal / hide ---------------- */
+  // Fade in first, THEN draw the connecting line — reverse of the
+  // parent-child pattern (which draws the line first, then fades the node).
+  function showSpouse(node){
+    const spouse = node.spouse;
+    if (!spouse || spouse.visible) return;
+    spouse.visible = true;
+    spouse.el.style.display = 'block';
+    spouse.curX = spouse.targetX; spouse.curY = spouse.targetY;
+    applyTransform(spouse);
+    requestAnimationFrame(() => spouse.el.classList.add('is-visible'));
+    window.setTimeout(() => {
+      addSpouseEdgeDrawn(node, spouse, EXPAND_MS, () => {
+        // expansion + children fade in, same pattern as any other node
+        revealChildren(node);
+      });
+    }, FADE_MS);
+  }
+  function hideSpouse(node){
+    const spouse = node.spouse;
+    if (!spouse || !spouse.visible) return;
+    spouse.visible = false;
+    spouse.tween = null;
+    spouse.el.classList.remove('is-visible');
+    window.setTimeout(() => {
+      retractEdge(spouse, COLLAPSE_MS, () => {
+        spouse.el.style.display = 'none';
+        removeEdge(spouse.id);
+      });
+    }, FADE_MS);
+  }
+
   /* ---------------- toggle ---------------- */
   function toggle(node){
-    if (!node.children.length) return;
+    if (!node.children.length && !node.spouse) return;
     node.expanded = !node.expanded;
     node.el.classList.toggle('expanded', node.expanded);
     relayout();
     if (node.expanded){
-      revealChildren(node);
-      // frame the parent plus all of its direct children so nothing
-      // gets stranded off-screen on narrow viewports
-      focusOnNodes([node, ...node.children], FOCUS_MS);
+      // frame the parent, spouse (if any), and all direct children so
+      // nothing gets stranded off-screen on narrow viewports
+      focusOnNodes([node, ...(node.spouse ? [node.spouse] : []), ...node.children], FOCUS_MS);
+
+      if (node.spouse){
+        // 1. align: reflow already-visible nodes into their new slots
+        reflowVisible();
+        // 2. spouse fades in -> 3. spouse link draws -> 4. expansion -> 5. children fade in
+        window.setTimeout(() => showSpouse(node), EXPAND_MS);
+      } else {
+        revealChildren(node);
+        reflowVisible();
+      }
     } else {
+      if (node.spouse) hideSpouse(node);
       hideChildren(node);
       // Pull focus back out to the level this node lives in — its parent
       // plus siblings — instead of zooming tight on just this node.
@@ -636,8 +814,8 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
       } else {
         focusOnNodes(allNodes.filter(n => n.visible), FOCUS_MS);
       }
+      reflowVisible();
     }
-    reflowVisible();
   }
 
   /* ---------------- animation loop ---------------- */
