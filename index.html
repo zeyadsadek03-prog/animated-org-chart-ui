@@ -635,7 +635,8 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     activeEdges.set(node.id, { type:'parent-child', parent: node.parent, child: node, pathEl });
 
     const p = node.parent;
-    const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
+    const start = descentStart(p);
+    const x1 = start.x, y1 = start.y;
     const x2 = node.curX, y2 = node.curY - CHILD_TOP_OFFSET;
     pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
 
@@ -711,6 +712,17 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
   }
 
+  // For an expanded couple the descent line to the children originates from
+  // the spouse (the node on the right), not the primary. When the couple is
+  // collapsed there are no visible children, so this just falls back to the
+  // primary's bottom edge.
+  function descentStart(parentNode){
+    if (parentNode.spouse && parentNode.expanded){
+      return { x: parentNode.spouse.curX, y: parentNode.spouse.curY + PARENT_BOTTOM_OFFSET };
+    }
+    return { x: parentNode.curX, y: parentNode.curY + PARENT_BOTTOM_OFFSET };
+  }
+
   function updateConnectors(){
     activeEdges.forEach(edge => {
       if (edge.type === 'spouse'){
@@ -719,7 +731,8 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
         edge.pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
       } else {
         const p = edge.parent, c = edge.child;
-        const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
+        const start = descentStart(p);
+        const x1 = start.x, y1 = start.y;
         const x2 = c.curX, y2 = c.curY - CHILD_TOP_OFFSET;
         edge.pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
       }
