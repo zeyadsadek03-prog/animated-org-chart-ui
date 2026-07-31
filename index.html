@@ -696,6 +696,14 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
   }
 
   function hideDescendantsInstant(node){
+    if (node.spouse && node.spouse.visible){
+      const s = node.spouse;
+      s.visible = false;
+      s.el.style.display = 'none';
+      s.el.classList.remove('is-visible');
+      s.tween = null;
+      removeEdge(s.id);
+    }
     for (const child of node.children){
       if (child.visible){
         child.visible = false;
