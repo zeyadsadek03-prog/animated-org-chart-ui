@@ -525,8 +525,7 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
     activeEdges.set(node.id, { type:'parent-child', parent: node.parent, child: node, pathEl });
 
     const p = node.parent;
-    const branch = p.spouse || p;
-    const x1 = branch.curX, y1 = branch.curY + PARENT_BOTTOM_OFFSET;
+    const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
     const x2 = node.curX, y2 = node.curY - CHILD_TOP_OFFSET;
     pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
 
@@ -610,8 +609,7 @@ const nodePhotos = {"idris":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/
         edge.pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
       } else {
         const p = edge.parent, c = edge.child;
-        const branch = p.spouse || p;
-        const x1 = branch.curX, y1 = branch.curY + PARENT_BOTTOM_OFFSET;
+        const x1 = p.curX, y1 = p.curY + PARENT_BOTTOM_OFFSET;
         const x2 = c.curX, y2 = c.curY - CHILD_TOP_OFFSET;
         edge.pathEl.setAttribute('d', edgePath(x1,y1,x2,y2));
       }
